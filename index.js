@@ -51,7 +51,8 @@ async function refreshKickToken() {
         kickToken = res.data.access_token;
         console.log('🔄 Token Kick renovado');
     } catch (err) {
-        console.log('Error obteniendo token Kick:', err.message);
+        kickToken = null; // Evitamos usar token inválido
+        console.log('⚠️ Error obteniendo token Kick:', err.message);
     }
 }
 
@@ -97,23 +98,31 @@ async function checkStreams() {
             headers: { 'Authorization': `Bearer ${kickToken}` }
         });
 
-        const isLiveKick = kickRes.data.is_live;
+        if (kickRes.status === 200) {
+            const isLiveKick = kickRes.data.is_live;
 
-        if (isLiveKick && !kickLive) {
-            const stream = kickRes.data;
-            const embed = new EmbedBuilder()
-                .setTitle(`${KICK_USER} está en vivo en Kick!`)
-                .setURL(`https://kick.com/${KICK_USER}`)
-                .setColor(0xFF4500)
-                .setDescription(stream.title || 'Transmisión en vivo');
+            if (isLiveKick && !kickLive) {
+                const stream = kickRes.data;
+                const embed = new EmbedBuilder()
+                    .setTitle(`${KICK_USER} está en vivo en Kick!`)
+                    .setURL(`https://kick.com/${KICK_USER}`)
+                    .setColor(0xFF4500)
+                    .setDescription(stream.title || 'Transmisión en vivo');
 
-            await channel.send({ embeds: [embed] });
-            kickLive = true;
-        } else if (!isLiveKick) {
-            kickLive = false;
+                await channel.send({ embeds: [embed] });
+                kickLive = true;
+            } else if (!isLiveKick) {
+                kickLive = false;
+            }
+        } else {
+            console.log(`Kick responded with status ${kickRes.status}`);
         }
     } catch (err) {
-        console.log('Error Kick:', err.message);
+        if (err.response && (err.response.status === 403 || err.response.status === 404)) {
+            console.log(`⚠️ Kick API: no se pudo acceder al canal o token inválido (${err.response.status})`);
+        } else {
+            console.log('Error Kick:', err.message);
+        }
     }
 }
 
