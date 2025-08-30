@@ -1,5 +1,10 @@
+<<<<<<< HEAD
 node_modules/
 .env
 *.log
 .DS_Store
 Thumbs.db
+=======
+node_modules/ 
+.env 
+>>>>>>> 2ce9837bdbc241d2f4681f05329ff76e2d31328a
