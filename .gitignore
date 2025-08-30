@@ -1,10 +1,23 @@
-<<<<<<< HEAD
+# Node modules
 node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment variables
 .env
+
+# Logs
+logs/
 *.log
+
+# OS
 .DS_Store
 Thumbs.db
-=======
-node_modules/ 
-.env 
->>>>>>> 2ce9837bdbc241d2f4681f05329ff76e2d31328a
+
+# IDE
+.vscode/
+.idea/
+
+# Lock files (si querés regenerarlos en Railway)
+package-lock.json

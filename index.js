@@ -12,23 +12,13 @@ const client = new Client({
 });
 
 // ------------------ CONFIG ------------------
-<<<<<<< HEAD
 const STREAM_CHANNEL_ID = process.env.STREAM_CHANNEL_ID;
 const TWITCH_USER = process.env.TWITCH_USER;
 const KICK_USER = process.env.KICK_USER;
 
 let twitchLive = false;
 let kickLive = false;
-let twitchToken = null;
-=======
-const STREAM_CHANNEL_ID = '1411194745715294290'; // Discord channel
-const TWITCH_USER = 'papirolafr';
-const KICK_USER = 'brunardito';
-
-let twitchLive = false;
-let kickLive = false;
-let twitchToken = process.env.TWITCH_ACCESS_TOKEN;
->>>>>>> 2ce9837bdbc241d2f4681f05329ff76e2d31328a
+let twitchToken = process.env.TWITCH_ACCESS_TOKEN || null;
 let kickToken = null;
 
 // ------------------ EXPRESS PARA OAUTH KICK ------------------
@@ -60,13 +50,9 @@ app.get('/callback', async (req, res) => {
     }
 });
 
-<<<<<<< HEAD
 // Railway necesita escuchar en process.env.PORT
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Servidor OAuth Kick escuchando en http://localhost:${PORT}`));
-=======
-app.listen(3000, () => console.log('Servidor OAuth Kick escuchando en http://localhost:3000'));
->>>>>>> 2ce9837bdbc241d2f4681f05329ff76e2d31328a
 
 // ------------------ FUNCIONES ------------------
 async function refreshTwitchToken() {
@@ -119,11 +105,7 @@ async function checkStreams() {
     }
 
     // -------------- KICK -----------------
-<<<<<<< HEAD
     if (!kickToken) return;
-=======
-    if (!kickToken) return; // si no hay token, no hace nada
->>>>>>> 2ce9837bdbc241d2f4681f05329ff76e2d31328a
 
     try {
         const kickRes = await axios.get(`https://kick.com/api/v1/channels/${KICK_USER}`, {
@@ -153,11 +135,7 @@ async function checkStreams() {
 }
 
 // ------------------ BOT ------------------
-<<<<<<< HEAD
 client.once('clientReady', async () => {
-=======
-client.once('ready', async () => {
->>>>>>> 2ce9837bdbc241d2f4681f05329ff76e2d31328a
     console.log(`[${new Date().toLocaleTimeString()}] ✅ Bot conectado como ${client.user.tag}`);
     await refreshTwitchToken();
     checkStreams();
@@ -165,8 +143,4 @@ client.once('ready', async () => {
     setInterval(refreshTwitchToken, 50 * 60 * 1000); // renovar token Twitch
 });
 
-<<<<<<< HEAD
-=======
-
->>>>>>> 2ce9837bdbc241d2f4681f05329ff76e2d31328a
 client.login(process.env.TOKEN);
