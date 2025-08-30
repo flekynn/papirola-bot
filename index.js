@@ -14,15 +14,12 @@ const STREAM_CHANNEL_ID = '1411194745715294290'; // Cambialo
 const TWITCH_USER = 'papirolafr';
 const KICK_USER = 'brunardito';
 
-// Estado de si los streamers están en vivo
 let twitchLive = false;
 let kickLive = false;
-
-// Tokens
 let twitchToken = process.env.TWITCH_ACCESS_TOKEN;
 let kickToken = null;
 
-// ---------------- Funciones para renovar tokens ----------------
+// ---------------- Funciones de tokens ----------------
 async function refreshTwitchToken() {
     try {
         const res = await axios.post('https://id.twitch.tv/oauth2/token', null, {
@@ -33,9 +30,9 @@ async function refreshTwitchToken() {
             }
         });
         twitchToken = res.data.access_token;
-        console.log('🔄 Token Twitch renovado');
+        console.log(`[${new Date().toLocaleTimeString()}] 🔄 Token Twitch renovado`);
     } catch (err) {
-        console.log('Error renovando token Twitch:', err.message);
+        console.log(`[${new Date().toLocaleTimeString()}] Error renovando token Twitch:`, err.message);
     }
 }
 
@@ -49,17 +46,17 @@ async function refreshKickToken() {
             }
         });
         kickToken = res.data.access_token;
-        console.log('🔄 Token Kick renovado');
+        console.log(`[${new Date().toLocaleTimeString()}] 🔄 Token Kick renovado`);
     } catch (err) {
-        kickToken = null; // Evitamos usar token inválido
-        console.log('⚠️ Error obteniendo token Kick:', err.message);
+        kickToken = null;
+        console.log(`[${new Date().toLocaleTimeString()}] ⚠️ Error obteniendo token Kick:`, err.message);
     }
 }
 
 // ---------------- Revisar streams ----------------
 async function checkStreams() {
     const channel = client.channels.cache.get(STREAM_CHANNEL_ID);
-    if (!channel) return console.log('No se encuentra el canal de Discord');
+    if (!channel) return console.log(`[${new Date().toLocaleTimeString()}] No se encuentra el canal de Discord`);
 
     // -------- Twitch --------
     try {
@@ -83,15 +80,20 @@ async function checkStreams() {
 
             await channel.send({ embeds: [embed] });
             twitchLive = true;
+            console.log(`[${new Date().toLocaleTimeString()}] Twitch LIVE: ${stream.title}`);
         } else if (!isLiveTwitch) {
             twitchLive = false;
         }
     } catch (err) {
-        console.log('Error Twitch:', err.message);
+        if (err.response && err.response.status === 429) {
+            console.log(`[${new Date().toLocaleTimeString()}] ⚠️ Twitch rate limit, esperar 1 min`);
+        } else {
+            console.log(`[${new Date().toLocaleTimeString()}] Error Twitch:`, err.message);
+        }
     }
 
     // -------- Kick --------
-    if (!kickToken) return; // No token, no hacemos nada
+    if (!kickToken) return;
 
     try {
         const kickRes = await axios.get(`https://kick.com/api/v1/channels/${KICK_USER}`, {
@@ -111,24 +113,25 @@ async function checkStreams() {
 
                 await channel.send({ embeds: [embed] });
                 kickLive = true;
+                console.log(`[${new Date().toLocaleTimeString()}] Kick LIVE: ${stream.title || 'sin título'}`);
             } else if (!isLiveKick) {
                 kickLive = false;
             }
         } else {
-            console.log(`Kick responded with status ${kickRes.status}`);
+            console.log(`[${new Date().toLocaleTimeString()}] Kick responded with status ${kickRes.status}`);
         }
     } catch (err) {
         if (err.response && (err.response.status === 403 || err.response.status === 404)) {
-            console.log(`⚠️ Kick API: no se pudo acceder al canal o token inválido (${err.response.status})`);
+            console.log(`[${new Date().toLocaleTimeString()}] ⚠️ Kick API inaccesible o token inválido (${err.response.status})`);
         } else {
-            console.log('Error Kick:', err.message);
+            console.log(`[${new Date().toLocaleTimeString()}] Error Kick:`, err.message);
         }
     }
 }
 
 // ---------------- Bot listo ----------------
 client.once('ready', async () => {
-    console.log(`✅ Bot conectado como ${client.user.tag}`);
+    console.log(`[${new Date().toLocaleTimeString()}] ✅ Bot conectado como ${client.user.tag}`);
 
     // Generar tokens iniciales
     await refreshTwitchToken();
