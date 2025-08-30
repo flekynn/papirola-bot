@@ -18,22 +18,43 @@ const KICK_USER = 'brunardito';
 let twitchLive = false;
 let kickLive = false;
 
+// Token Twitch (se renueva automáticamente)
+let twitchToken = process.env.TWITCH_ACCESS_TOKEN;
+
 client.once('ready', () => {
     console.log(`✅ Bot conectado como ${client.user.tag}`);
     checkStreams();
     setInterval(checkStreams, 60 * 1000); // Cada 1 minuto
+    setInterval(refreshTwitchToken, 50 * 60 * 1000); // Renovar token cada 50 min
 });
+
+// Función para renovar token Twitch
+async function refreshTwitchToken() {
+    try {
+        const res = await axios.post('https://id.twitch.tv/oauth2/token', null, {
+            params: {
+                client_id: process.env.TWITCH_CLIENT_ID,
+                client_secret: process.env.TWITCH_CLIENT_SECRET,
+                grant_type: 'client_credentials'
+            }
+        });
+        twitchToken = res.data.access_token;
+        console.log('🔄 Token Twitch renovado');
+    } catch (err) {
+        console.log('Error renovando token Twitch:', err.message);
+    }
+}
 
 async function checkStreams() {
     const channel = client.channels.cache.get(STREAM_CHANNEL_ID);
     if (!channel) return console.log('No se encuentra el canal de Discord');
 
-    // Twitch
+    // ------------------ Twitch ------------------
     try {
         const twitchRes = await axios.get(`https://api.twitch.tv/helix/streams?user_login=${TWITCH_USER}`, {
             headers: {
-                'Client-ID': process.env.TWITCH_CLIENT_ID,
-                'Authorization': `Bearer ${process.env.TWITCH_ACCESS_TOKEN}`
+                'Authorization': `Bearer ${twitchToken}`,
+                'Client-Id': process.env.TWITCH_CLIENT_ID
             }
         });
 
@@ -48,19 +69,20 @@ async function checkStreams() {
                 .setColor(0x9146FF)
                 .setThumbnail(stream.thumbnail_url.replace('{width}', '320').replace('{height}', '180'));
 
-            channel.send({ embeds: [embed] });
-            twitchLive = true; // Marcamos como que ya avisamos
+            await channel.send({ embeds: [embed] });
+            twitchLive = true;
         } else if (!isLiveTwitch) {
-            twitchLive = false; // Reiniciamos cuando termina
+            twitchLive = false;
         }
     } catch (err) {
         console.log('Error Twitch:', err.message);
     }
 
-    // Kick
+    // ------------------ Kick ------------------
     try {
         const kickRes = await axios.get(`https://kick.com/api/v1/channels/${KICK_USER}`);
-        const isLiveKick = kickRes.data.isLive; // Ajustar según API Kick
+        console.log('Kick data:', kickRes.data); // Para debug
+        const isLiveKick = kickRes.data.is_live; // Corregido
 
         if (isLiveKick && !kickLive) {
             const stream = kickRes.data;
@@ -70,7 +92,7 @@ async function checkStreams() {
                 .setColor(0xFF4500)
                 .setDescription(stream.title || 'Transmisión en vivo');
 
-            channel.send({ embeds: [embed] });
+            await channel.send({ embeds: [embed] });
             kickLive = true;
         } else if (!isLiveKick) {
             kickLive = false;
