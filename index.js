@@ -19,6 +19,19 @@ let kickLive = false;
 let twitchToken = process.env.TWITCH_ACCESS_TOKEN;
 let kickToken = null;
 
+// ---------------- Función de reintentos ----------------
+async function retryAxiosRequest(requestFn, retries = 3, delay = 3000) {
+    for (let i = 0; i < retries; i++) {
+        try {
+            return await requestFn();
+        } catch (err) {
+            if (i === retries - 1) throw err;
+            console.log(`[${new Date().toLocaleTimeString()}] ⚠️ Request falló, reintentando en ${delay/1000}s...`);
+            await new Promise(r => setTimeout(r, delay));
+        }
+    }
+}
+
 // ---------------- Funciones de tokens ----------------
 async function refreshTwitchToken() {
     try {
@@ -60,12 +73,14 @@ async function checkStreams() {
 
     // -------- Twitch --------
     try {
-        const twitchRes = await axios.get(`https://api.twitch.tv/helix/streams?user_login=${TWITCH_USER}`, {
-            headers: {
-                'Authorization': `Bearer ${twitchToken}`,
-                'Client-Id': process.env.TWITCH_CLIENT_ID
-            }
-        });
+        const twitchRes = await retryAxiosRequest(() =>
+            axios.get(`https://api.twitch.tv/helix/streams?user_login=${TWITCH_USER}`, {
+                headers: {
+                    'Authorization': `Bearer ${twitchToken}`,
+                    'Client-Id': process.env.TWITCH_CLIENT_ID
+                }
+            })
+        );
 
         const isLiveTwitch = twitchRes.data.data && twitchRes.data.data.length > 0;
 
@@ -96,9 +111,11 @@ async function checkStreams() {
     if (!kickToken) return;
 
     try {
-        const kickRes = await axios.get(`https://kick.com/api/v1/channels/${KICK_USER}`, {
-            headers: { 'Authorization': `Bearer ${kickToken}` }
-        });
+        const kickRes = await retryAxiosRequest(() =>
+            axios.get(`https://kick.com/api/v1/channels/${KICK_USER}`, {
+                headers: { 'Authorization': `Bearer ${kickToken}` }
+            })
+        );
 
         if (kickRes.status === 200) {
             const isLiveKick = kickRes.data.is_live;
