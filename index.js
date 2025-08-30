@@ -141,4 +141,5 @@ client.once('ready', async () => {
     setInterval(refreshTwitchToken, 50 * 60 * 1000); // renovar token Twitch
 });
 
+
 client.login(process.env.TOKEN);
