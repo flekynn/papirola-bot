@@ -1,6 +1,7 @@
 require('dotenv').config();
 const { Client, GatewayIntentBits, EmbedBuilder } = require('discord.js');
 const axios = require('axios');
+const express = require('express');
 
 const client = new Client({
     intents: [
@@ -10,7 +11,8 @@ const client = new Client({
     ]
 });
 
-const STREAM_CHANNEL_ID = '1411194745715294290'; // Cambialo
+// ------------------ CONFIG ------------------
+const STREAM_CHANNEL_ID = '1411194745715294290'; // Discord channel
 const TWITCH_USER = 'papirolafr';
 const KICK_USER = 'brunardito';
 
@@ -19,20 +21,38 @@ let kickLive = false;
 let twitchToken = process.env.TWITCH_ACCESS_TOKEN;
 let kickToken = null;
 
-// ---------------- Función de reintentos ----------------
-async function retryAxiosRequest(requestFn, retries = 3, delay = 3000) {
-    for (let i = 0; i < retries; i++) {
-        try {
-            return await requestFn();
-        } catch (err) {
-            if (i === retries - 1) throw err;
-            console.log(`[${new Date().toLocaleTimeString()}] ⚠️ Request falló, reintentando en ${delay/1000}s...`);
-            await new Promise(r => setTimeout(r, delay));
-        }
-    }
-}
+// ------------------ EXPRESS PARA OAUTH KICK ------------------
+const app = express();
 
-// ---------------- Funciones de tokens ----------------
+app.get('/auth', (req, res) => {
+    const url = `https://kick.com/oauth2/authorize?client_id=${process.env.KICK_CLIENT_ID}&redirect_uri=${encodeURIComponent(process.env.KICK_REDIRECT_URI)}&response_type=code&scope=channel:read`;
+    res.redirect(url);
+});
+
+app.get('/callback', async (req, res) => {
+    const code = req.query.code;
+    try {
+        const tokenRes = await axios.post('https://kick.com/oauth2/token', null, {
+            params: {
+                client_id: process.env.KICK_CLIENT_ID,
+                client_secret: process.env.KICK_CLIENT_SECRET,
+                code,
+                grant_type: 'authorization_code',
+                redirect_uri: process.env.KICK_REDIRECT_URI
+            }
+        });
+        kickToken = tokenRes.data.access_token;
+        console.log(`[${new Date().toLocaleTimeString()}] 🔑 Token Kick obtenido`);
+        res.send('Kick OAuth completado ✅');
+    } catch (err) {
+        console.log('Error Kick OAuth:', err.message);
+        res.status(500).send('Error en Kick OAuth');
+    }
+});
+
+app.listen(3000, () => console.log('Servidor OAuth Kick escuchando en http://localhost:3000'));
+
+// ------------------ FUNCIONES ------------------
 async function refreshTwitchToken() {
     try {
         const res = await axios.post('https://id.twitch.tv/oauth2/token', null, {
@@ -45,42 +65,22 @@ async function refreshTwitchToken() {
         twitchToken = res.data.access_token;
         console.log(`[${new Date().toLocaleTimeString()}] 🔄 Token Twitch renovado`);
     } catch (err) {
-        console.log(`[${new Date().toLocaleTimeString()}] Error renovando token Twitch:`, err.message);
+        console.log('Error renovando token Twitch:', err.message);
     }
 }
 
-async function refreshKickToken() {
-    try {
-        const res = await axios.post('https://kick.com/oauth2/token', null, {
-            params: {
-                client_id: process.env.KICK_CLIENT_ID,
-                client_secret: process.env.KICK_CLIENT_SECRET,
-                grant_type: 'client_credentials'
-            }
-        });
-        kickToken = res.data.access_token;
-        console.log(`[${new Date().toLocaleTimeString()}] 🔄 Token Kick renovado`);
-    } catch (err) {
-        kickToken = null;
-        console.log(`[${new Date().toLocaleTimeString()}] ⚠️ Error obteniendo token Kick:`, err.message);
-    }
-}
-
-// ---------------- Revisar streams ----------------
 async function checkStreams() {
     const channel = client.channels.cache.get(STREAM_CHANNEL_ID);
-    if (!channel) return console.log(`[${new Date().toLocaleTimeString()}] No se encuentra el canal de Discord`);
+    if (!channel) return console.log('No se encuentra el canal de Discord');
 
-    // -------- Twitch --------
+    // -------------- TWITCH -----------------
     try {
-        const twitchRes = await retryAxiosRequest(() =>
-            axios.get(`https://api.twitch.tv/helix/streams?user_login=${TWITCH_USER}`, {
-                headers: {
-                    'Authorization': `Bearer ${twitchToken}`,
-                    'Client-Id': process.env.TWITCH_CLIENT_ID
-                }
-            })
-        );
+        const twitchRes = await axios.get(`https://api.twitch.tv/helix/streams?user_login=${TWITCH_USER}`, {
+            headers: {
+                'Authorization': `Bearer ${twitchToken}`,
+                'Client-Id': process.env.TWITCH_CLIENT_ID
+            }
+        });
 
         const isLiveTwitch = twitchRes.data.data && twitchRes.data.data.length > 0;
 
@@ -95,27 +95,20 @@ async function checkStreams() {
 
             await channel.send({ embeds: [embed] });
             twitchLive = true;
-            console.log(`[${new Date().toLocaleTimeString()}] Twitch LIVE: ${stream.title}`);
         } else if (!isLiveTwitch) {
             twitchLive = false;
         }
     } catch (err) {
-        if (err.response && err.response.status === 429) {
-            console.log(`[${new Date().toLocaleTimeString()}] ⚠️ Twitch rate limit, esperar 1 min`);
-        } else {
-            console.log(`[${new Date().toLocaleTimeString()}] Error Twitch:`, err.message);
-        }
+        console.log('Error Twitch:', err.message);
     }
 
-    // -------- Kick --------
-    if (!kickToken) return;
+    // -------------- KICK -----------------
+    if (!kickToken) return; // si no hay token, no hace nada
 
     try {
-        const kickRes = await retryAxiosRequest(() =>
-            axios.get(`https://kick.com/api/v1/channels/${KICK_USER}`, {
-                headers: { 'Authorization': `Bearer ${kickToken}` }
-            })
-        );
+        const kickRes = await axios.get(`https://kick.com/api/v1/channels/${KICK_USER}`, {
+            headers: { 'Authorization': `Bearer ${kickToken}` }
+        });
 
         if (kickRes.status === 200) {
             const isLiveKick = kickRes.data.is_live;
@@ -130,37 +123,22 @@ async function checkStreams() {
 
                 await channel.send({ embeds: [embed] });
                 kickLive = true;
-                console.log(`[${new Date().toLocaleTimeString()}] Kick LIVE: ${stream.title || 'sin título'}`);
             } else if (!isLiveKick) {
                 kickLive = false;
             }
-        } else {
-            console.log(`[${new Date().toLocaleTimeString()}] Kick responded with status ${kickRes.status}`);
         }
     } catch (err) {
-        if (err.response && (err.response.status === 403 || err.response.status === 404)) {
-            console.log(`[${new Date().toLocaleTimeString()}] ⚠️ Kick API inaccesible o token inválido (${err.response.status})`);
-        } else {
-            console.log(`[${new Date().toLocaleTimeString()}] Error Kick:`, err.message);
-        }
+        console.log('Error Kick:', err.message);
     }
 }
 
-// ---------------- Bot listo ----------------
+// ------------------ BOT ------------------
 client.once('ready', async () => {
     console.log(`[${new Date().toLocaleTimeString()}] ✅ Bot conectado como ${client.user.tag}`);
-
-    // Generar tokens iniciales
     await refreshTwitchToken();
-    await refreshKickToken();
-
-    // Revisar streams cada minuto
     checkStreams();
-    setInterval(checkStreams, 60 * 1000);
-
-    // Renovar tokens automáticamente
-    setInterval(refreshTwitchToken, 50 * 60 * 1000);
-    setInterval(refreshKickToken, 50 * 60 * 1000);
+    setInterval(checkStreams, 60 * 1000); // cada 1 minuto
+    setInterval(refreshTwitchToken, 50 * 60 * 1000); // renovar token Twitch
 });
 
 client.login(process.env.TOKEN);
