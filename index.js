@@ -95,7 +95,10 @@ async function checkStreams() {
                 .setColor(0x9146FF)
                 .setThumbnail(stream.thumbnail_url.replace('{width}', '320').replace('{height}', '180'));
 
-            await channel.send({ embeds: [embed] });
+            await channel.send({
+        content: '@1411569893014241282',
+        embeds: [embed]
+    });
             twitchLive = true;
         } else if (!isLiveTwitch) {
             twitchLive = false;
@@ -123,7 +126,10 @@ async function checkStreams() {
                     .setColor(0xFF4500)
                     .setDescription(stream.title || 'Transmisión en vivo');
 
-                await channel.send({ embeds: [embed] });
+                await channel.send({
+        content: '@1411569893014241282',
+        embeds: [embed]
+    });
                 kickLive = true;
             } else if (!isLiveKick) {
                 kickLive = false;
