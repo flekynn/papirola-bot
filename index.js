@@ -95,7 +95,7 @@ async function checkStreams() {
                 .setThumbnail(stream.thumbnail_url.replace('{width}', '320').replace('{height}', '180'));
 
             await channel.send({
-                content: `<@&${MENTION_ROLE_ID}> ¡Ven al stream!`,
+                content: `<@&${MENTION_ROLE_ID}>`,
                 embeds: [embed],
                 allowedMentions: { roles: [MENTION_ROLE_ID] }
             });
@@ -127,7 +127,7 @@ async function checkStreams() {
                     .setDescription(stream.title || 'Transmisión en vivo');
 
                 await channel.send({
-                    content: `<@&${MENTION_ROLE_ID}> ¡Ven al stream!`,
+                    content: `<@&${MENTION_ROLE_ID}>`,
                     embeds: [embed],
                     allowedMentions: { roles: [MENTION_ROLE_ID] }
                 });
