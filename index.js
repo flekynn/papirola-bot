@@ -15,6 +15,7 @@ const client = new Client({
 const STREAM_CHANNEL_ID = process.env.STREAM_CHANNEL_ID;
 const TWITCH_USER = process.env.TWITCH_USER;
 const KICK_USER = process.env.KICK_USER;
+const MENTION_ROLE_ID = process.env.MENTION_ROLE_ID; // <--- NUEVO
 
 let twitchLive = false;
 let kickLive = false;
@@ -23,6 +24,8 @@ let kickToken = null;
 
 // ------------------ EXPRESS PARA OAUTH KICK ------------------
 const app = express();
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`Servidor OAuth Kick escuchando en http://localhost:${PORT}`));
 
 app.get('/auth', (req, res) => {
     const url = `https://kick.com/oauth2/authorize?client_id=${process.env.KICK_CLIENT_ID}&redirect_uri=${encodeURIComponent(process.env.KICK_REDIRECT_URI)}&response_type=code&scope=channel:read`;
@@ -49,10 +52,6 @@ app.get('/callback', async (req, res) => {
         res.status(500).send('Error en Kick OAuth');
     }
 });
-
-// Railway necesita escuchar en process.env.PORT
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Servidor OAuth Kick escuchando en http://localhost:${PORT}`));
 
 // ------------------ FUNCIONES ------------------
 async function refreshTwitchToken() {
@@ -96,10 +95,10 @@ async function checkStreams() {
                 .setThumbnail(stream.thumbnail_url.replace('{width}', '320').replace('{height}', '180'));
 
             await channel.send({
-        content: '<@&1411569893014241282>',
-        embeds: [embed]
-        allowedMentions: { roles: ['1411569893014241282'] }
-    });
+                content: `<@&${MENTION_ROLE_ID}> ¡Ven al stream!`,
+                embeds: [embed],
+                allowedMentions: { roles: [MENTION_ROLE_ID] }
+            });
             twitchLive = true;
         } else if (!isLiveTwitch) {
             twitchLive = false;
@@ -128,10 +127,10 @@ async function checkStreams() {
                     .setDescription(stream.title || 'Transmisión en vivo');
 
                 await channel.send({
-        content: '<@&1411569893014241282>',
-        embeds: [embed]
-        allowedMentions: { roles: ['1411569893014241282'] }
-    });
+                    content: `<@&${MENTION_ROLE_ID}> ¡Ven al stream!`,
+                    embeds: [embed],
+                    allowedMentions: { roles: [MENTION_ROLE_ID] }
+                });
                 kickLive = true;
             } else if (!isLiveKick) {
                 kickLive = false;
@@ -143,7 +142,7 @@ async function checkStreams() {
 }
 
 // ------------------ BOT ------------------
-client.once('clientReady', async () => {
+client.once('ready', async () => {
     console.log(`[${new Date().toLocaleTimeString()}] ✅ Bot conectado como ${client.user.tag}`);
     await refreshTwitchToken();
     checkStreams();
