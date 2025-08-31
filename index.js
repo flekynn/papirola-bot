@@ -96,8 +96,9 @@ async function checkStreams() {
                 .setThumbnail(stream.thumbnail_url.replace('{width}', '320').replace('{height}', '180'));
 
             await channel.send({
-        content: '@&1411569893014241282',
+        content: '<@&1411569893014241282>',
         embeds: [embed]
+        allowedMentions: { roles: ['1411569893014241282'] }
     });
             twitchLive = true;
         } else if (!isLiveTwitch) {
@@ -127,8 +128,9 @@ async function checkStreams() {
                     .setDescription(stream.title || 'Transmisión en vivo');
 
                 await channel.send({
-        content: '@&1411569893014241282',
+        content: '<@&1411569893014241282>',
         embeds: [embed]
+        allowedMentions: { roles: ['1411569893014241282'] }
     });
                 kickLive = true;
             } else if (!isLiveKick) {
