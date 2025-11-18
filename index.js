@@ -27,8 +27,14 @@ let kickToken = null;
 // ------------------ YOUTUBE CACHE ------------------
 const YOUTUBE_CACHE_FILE = './youtubeCache.json';
 let youtubeCache = {};
+
 if (fs.existsSync(YOUTUBE_CACHE_FILE)) {
-    youtubeCache = JSON.parse(fs.readFileSync(YOUTUBE_CACHE_FILE, 'utf-8'));
+    try {
+        youtubeCache = JSON.parse(fs.readFileSync(YOUTUBE_CACHE_FILE, 'utf-8'));
+    } catch {
+        console.log(`[${new Date().toLocaleTimeString()}] ⚠️ youtubeCache.json vacío o corrupto, se inicializa vacío`);
+        youtubeCache = {};
+    }
 }
 
 function saveYouTubeCache() {
@@ -119,30 +125,30 @@ async function checkStreams() {
     }
 
     // -------------- KICK -----------------
-    if (kickToken) {
-        try {
-            const kickRes = await axios.get(`https://kick.com/api/v1/channels/${KICK_USER}`, {
-                headers: { 'Authorization': `Bearer ${kickToken}` }
-            });
+    if (!kickToken) return;
 
-            if (kickRes.status === 200) {
-                const isLiveKick = kickRes.data.is_live;
+    try {
+        const kickRes = await axios.get(`https://kick.com/api/v1/channels/${KICK_USER}`, {
+            headers: { 'Authorization': `Bearer ${kickToken}` }
+        });
 
-                if (isLiveKick && !kickLive) {
-                    const stream = kickRes.data;
-                    await channel.send({
-                        content: `<@&${MENTION_ROLE_ID}>`,
-                        embeds: [kickEmbed(KICK_USER, stream.title, `https://kick.com/${KICK_USER}`)],
-                        allowedMentions: { roles: [MENTION_ROLE_ID] }
-                    });
-                    kickLive = true;
-                } else if (!isLiveKick) {
-                    kickLive = false;
-                }
+        if (kickRes.status === 200) {
+            const isLiveKick = kickRes.data.is_live;
+
+            if (isLiveKick && !kickLive) {
+                const stream = kickRes.data;
+                await channel.send({
+                    content: `<@&${MENTION_ROLE_ID}>`,
+                    embeds: [kickEmbed(KICK_USER, stream.title, `https://kick.com/${KICK_USER}`)],
+                    allowedMentions: { roles: [MENTION_ROLE_ID] }
+                });
+                kickLive = true;
+            } else if (!isLiveKick) {
+                kickLive = false;
             }
-        } catch (err) {
-            console.log('Error Kick:', err.message);
         }
+    } catch (err) {
+        console.log('Error Kick:', err.message);
     }
 
     // -------------- YOUTUBE -----------------
@@ -193,7 +199,7 @@ async function checkStreams() {
             console.log('Error YouTube:', err.message);
         }
     }
-} 
+}
 
 // ------------------ BOT ------------------
 client.once('ready', async () => {
