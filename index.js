@@ -15,7 +15,7 @@ const client = new Client({
 const STREAM_CHANNEL_ID = process.env.STREAM_CHANNEL_ID;
 const TWITCH_USER = process.env.TWITCH_USER;
 const KICK_USER = process.env.KICK_USER;
-const MENTION_ROLE_ID = process.env.MENTION_ROLE_ID; // <--- NUEVO
+const MENTION_ROLE_ID = process.env.MENTION_ROLE_ID; // rol a mencionar
 
 let twitchLive = false;
 let kickLive = false;
@@ -141,12 +141,73 @@ async function checkStreams() {
     }
 }
 
+// ------------------ YOUTUBE -----------------
+const YOUTUBE_CHANNELS = [
+    { username: 'papirolafr', lastVideoId: null } // agregar más si se quiere
+];
+
+async function checkYouTube() {
+    const channel = client.channels.cache.get(STREAM_CHANNEL_ID);
+    if (!channel) return;
+
+    for (const ytChannel of YOUTUBE_CHANNELS) {
+        try {
+            // Obtener ID del playlist de uploads
+            const res = await axios.get(`https://www.googleapis.com/youtube/v3/channels`, {
+                params: {
+                    part: 'contentDetails',
+                    forUsername: ytChannel.username,
+                    key: process.env.YOUTUBE_API_KEY
+                }
+            });
+
+            const uploadsPlaylistId = res.data.items[0].contentDetails.relatedPlaylists.uploads;
+
+            // Obtener último video
+            const videosRes = await axios.get('https://www.googleapis.com/youtube/v3/playlistItems', {
+                params: {
+                    part: 'snippet',
+                    playlistId: uploadsPlaylistId,
+                    maxResults: 1,
+                    key: process.env.YOUTUBE_API_KEY
+                }
+            });
+
+            const latestVideo = videosRes.data.items[0].snippet;
+            const videoId = latestVideo.resourceId.videoId;
+
+            // Solo notificar si es un video nuevo
+            if (ytChannel.lastVideoId !== videoId) {
+                ytChannel.lastVideoId = videoId;
+
+                const embed = new EmbedBuilder()
+                    .setTitle(`Nuevo video de ${ytChannel.username} en YouTube!`)
+                    .setDescription(latestVideo.title)
+                    .setURL(`https://www.youtube.com/watch?v=${videoId}`)
+                    .setColor(0xFF0000)
+                    .setThumbnail(latestVideo.thumbnails.medium.url);
+
+                await channel.send({
+                    content: `<@&${MENTION_ROLE_ID}>`,
+                    embeds: [embed],
+                    allowedMentions: { roles: [MENTION_ROLE_ID] }
+                });
+            }
+
+        } catch (err) {
+            console.log('Error YouTube:', err.message);
+        }
+    }
+}
+
 // ------------------ BOT ------------------
 client.once('ready', async () => {
     console.log(`[${new Date().toLocaleTimeString()}] ✅ Bot conectado como ${client.user.tag}`);
     await refreshTwitchToken();
     checkStreams();
+    checkYouTube(); // revisa YouTube al inicio
     setInterval(checkStreams, 60 * 1000); // cada 1 minuto
+    setInterval(checkYouTube, 5 * 60 * 1000); // cada 5 minutos
     setInterval(refreshTwitchToken, 50 * 60 * 1000); // renovar token Twitch
 });
 
