@@ -22,35 +22,68 @@ async function getAccessToken() {
 
 export async function getTwitchEmbed() {
   const token = await getAccessToken();
-  const res = await fetch(`https://api.twitch.tv/helix/streams?user_login=${TWITCH_USERNAME}`, {
+
+  const userRes = await fetch(`https://api.twitch.tv/helix/users?login=${TWITCH_USERNAME}`, {
     headers: {
       'Client-ID': TWITCH_CLIENT_ID,
       'Authorization': `Bearer ${token}`
     }
   });
-  const { data } = await res.json();
-  if (!data || data.length === 0) return null;
+  const userData = await userRes.json();
+  const userId = userData.data?.[0]?.id;
+  if (!userId) return null;
 
-  const stream = data[0];
-
-  const gameRes = await fetch(`https://api.twitch.tv/helix/games?id=${stream.game_id}`, {
+  const streamRes = await fetch(`https://api.twitch.tv/helix/streams?user_id=${userId}`, {
     headers: {
       'Client-ID': TWITCH_CLIENT_ID,
       'Authorization': `Bearer ${token}`
     }
   });
-  const gameData = await gameRes.json();
-  const gameName = gameData.data?.[0]?.name || 'Desconocido';
+  const streamData = await streamRes.json();
+  const stream = streamData.data?.[0];
+
+  if (stream) {
+    const gameRes = await fetch(`https://api.twitch.tv/helix/games?id=${stream.game_id}`, {
+      headers: {
+        'Client-ID': TWITCH_CLIENT_ID,
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    const gameData = await gameRes.json();
+    const gameName = gameData.data?.[0]?.name || 'Desconocido';
+
+    return new EmbedBuilder()
+      .setTitle(`🔴 ${stream.user_name} está en vivo en Twitch`)
+      .setDescription(stream.title || 'Stream activo')
+      .setURL(`https://twitch.tv/${TWITCH_USERNAME}`)
+      .setColor(0x9146FF)
+      .setThumbnail(`https://static-cdn.jtvnw.net/previews-ttv/live_user_${TWITCH_USERNAME}-320x180.jpg`)
+      .addFields(
+        { name: 'Categoría', value: gameName, inline: true },
+        { name: 'Viewers', value: `${stream.viewer_count}`, inline: true }
+      )
+      .setTimestamp(new Date());
+  }
+
+  const vodRes = await fetch(`https://api.twitch.tv/helix/videos?user_id=${userId}&type=archive`, {
+    headers: {
+      'Client-ID': TWITCH_CLIENT_ID,
+      'Authorization': `Bearer ${token}`
+    }
+  });
+  const vodData = await vodRes.json();
+  const vod = vodData.data?.[0];
+  if (!vod) return null;
 
   return new EmbedBuilder()
-    .setTitle(`🔴 ${stream.user_name} está en vivo en Twitch`)
-    .setDescription(stream.title || 'Stream activo')
-    .setURL(`https://twitch.tv/${TWITCH_USERNAME}`)
-    .setColor(0x9146FF)
-    .setThumbnail(`https://static-cdn.jtvnw.net/previews-ttv/live_user_${TWITCH_USERNAME}-320x180.jpg`)
+    .setTitle(`📼 Último stream de ${TWITCH_USERNAME}`)
+    .setDescription(vod.title)
+    .setURL(vod.url)
+    .setColor(0x777777)
+    .setThumbnail(vod.thumbnail_url.replace('%{width}', '320').replace('%{height}', '180'))
     .addFields(
-      { name: 'Categoría', value: gameName, inline: true },
-      { name: 'Viewers', value: `${stream.viewer_count}`, inline: true }
+      { name: 'Duración', value: vod.duration, inline: true },
+      { name: 'Publicado', value: vod.published_at, inline: true }
     )
     .setTimestamp(new Date());
 }
