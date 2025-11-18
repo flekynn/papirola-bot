@@ -2,8 +2,7 @@ import 'dotenv/config';
 import {
   Client,
   GatewayIntentBits,
-  Partials,
-  EmbedBuilder
+  Partials
 } from 'discord.js';
 import { checkAllPlatforms } from './modules/checkAllPlatforms.js';
 import { getTwitchEmbed } from './modules/twitchEmbed.js';
@@ -13,7 +12,8 @@ import { getYoutubeEmbed } from './modules/youtubeEmbed.js';
 const {
   DISCORD_TOKEN,
   TEST_CHANNEL_ID,
-  CHECK_INTERVAL_MS = '60000'
+  CHECK_INTERVAL_MS = '60000',
+  MENTION_ROLE_ID
 } = process.env;
 
 const client = new Client({
@@ -25,7 +25,7 @@ const client = new Client({
   partials: [Partials.Channel]
 });
 
-client.once('clientReady', async () => {
+client.once('ready', async () => {
   console.log(`[clientReady] Conectado como ${client.user.tag}`);
   const channel = await client.channels.fetch(TEST_CHANNEL_ID).catch(() => null);
   if (!channel || !channel.isTextBased()) {
@@ -66,7 +66,10 @@ client.on('interactionCreate', async (interaction) => {
         return;
       }
 
-      await interaction.editReply({ embeds: [embed] });
+      await interaction.editReply({
+        content: `<@&${MENTION_ROLE_ID}>`,
+        embeds: [embed]
+      });
     } catch (err) {
       console.error('[test_stream:error]', err);
       try {
@@ -88,7 +91,10 @@ client.on('interactionCreate', async (interaction) => {
       } else {
         await interaction.editReply('🔍 Resultados:');
         for (const evt of events) {
-          await interaction.followUp({ embeds: [evt] });
+          await interaction.followUp({
+            content: `<@&${MENTION_ROLE_ID}>`,
+            embeds: [evt]
+          });
         }
       }
     } catch (err) {
@@ -112,7 +118,10 @@ function startPolling(channel) {
     try {
       const events = await checkAllPlatforms({ skipCache: false });
       for (const evt of events) {
-        await channel.send({ embeds: [evt] });
+        await channel.send({
+          content: `<@&${MENTION_ROLE_ID}>`,
+          embeds: [evt]
+        });
       }
     } catch (err) {
       console.error('[poll:error]', err);
