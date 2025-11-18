@@ -9,45 +9,64 @@ module.exports = {
             option.setName('plataforma')
                 .setDescription('Plataforma a simular: twitch, kick, youtube')
                 .setRequired(true)
+        )
+        .addStringOption(option =>
+            option.setName('canal')
+                .setDescription('Para YouTube: selecciona un canal de prueba')
+                .setRequired(false)
         ),
     async execute(interaction, client) {
-        const plataforma = interaction.options.getString('plataforma');
+        const plataforma = interaction.options.getString('plataforma').toLowerCase();
 
-        // Usar canal de prueba del .env
+        // Canal de prueba
         const channel = client.channels.cache.get(process.env.TEST_CHANNEL_ID);
         if (!channel) return interaction.reply('No se encuentra el canal de prueba.');
 
         try {
-            switch(plataforma.toLowerCase()) {
-                case 'twitch':
+            switch(plataforma) {
+                case 'twitch': {
+                    const twitchUser = process.env.TWITCH_USER || 'TwitchUser';
                     await channel.send({
                         embeds: [twitchEmbed(
-                            'TwitchUser',
+                            twitchUser,
                             'Transmisión de prueba',
-                            'https://twitch.tv/TwitchUser',
+                            `https://twitch.tv/${twitchUser}`,
                             'https://placehold.it/320x180'
                         )]
                     });
                     break;
-                case 'kick':
+                }
+                case 'kick': {
+                    const kickUser = process.env.KICK_USER || 'KickUser';
                     await channel.send({
                         embeds: [kickEmbed(
-                            'KickUser',
+                            kickUser,
                             'Transmisión de prueba',
-                            'https://kick.com/KickUser'
+                            `https://kick.com/${kickUser}`
                         )]
                     });
                     break;
-                case 'youtube':
+                }
+                case 'youtube': {
+                    const ytChannels = process.env.YOUTUBE_CHANNELS
+                        ? process.env.YOUTUBE_CHANNELS.split(',').map(ch => ch.trim())
+                        : ['YouTubeUser'];
+
+                    let selectedChannel = interaction.options.getString('canal');
+                    if (!selectedChannel || !ytChannels.includes(selectedChannel)) {
+                        selectedChannel = ytChannels[0];
+                    }
+
                     await channel.send({
                         embeds: [youtubeEmbed(
-                            'YouTubeUser',
+                            selectedChannel,
                             'Video de prueba',
                             'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
                             'https://placehold.it/320x180'
                         )]
                     });
                     break;
+                }
                 default:
                     return interaction.reply('Plataforma no válida. Debe ser: twitch, kick o youtube.');
             }
