@@ -1,10 +1,12 @@
 require('dotenv').config();
-const { Client, GatewayIntentBits, REST, Routes } = require('discord.js');
+const { Client, GatewayIntentBits, Collection } = require('discord.js');
 const axios = require('axios');
 const express = require('express');
 const fs = require('fs');
+const path = require('path');
 const { twitchEmbed, kickEmbed, youtubeEmbed } = require('./messages');
 
+// ------------------ CLIENTE DISCORD ------------------
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
@@ -13,13 +15,21 @@ const client = new Client({
     ]
 });
 
+// Colección de comandos
+client.commands = new Collection();
+const commandsPath = path.join(__dirname, 'commands');
+fs.readdirSync(commandsPath).forEach(file => {
+    if (file.endsWith('.js')) {
+        const command = require(path.join(commandsPath, file));
+        client.commands.set(command.data.name, command);
+    }
+});
+
 // ------------------ CONFIG ------------------
 const STREAM_CHANNEL_ID = process.env.STREAM_CHANNEL_ID;
 const TWITCH_USER = process.env.TWITCH_USER;
 const KICK_USER = process.env.KICK_USER;
 const MENTION_ROLE_ID = process.env.MENTION_ROLE_ID;
-const TEST_MODE = process.env.TEST_MODE === 'true';
-const TEST_CHANNEL_ID = process.env.TEST_CHANNEL_ID;
 
 let twitchLive = false;
 let kickLive = false;
@@ -44,7 +54,7 @@ function saveYouTubeCache() {
 
 // ------------------ EXPRESS PARA OAUTH KICK ------------------
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => console.log(`Servidor OAuth Kick escuchando en http://localhost:${PORT}`));
 
 app.get('/auth', (req, res) => {
@@ -202,76 +212,29 @@ async function checkStreams() {
     }
 }
 
-// ------------------ BOT ------------------
-client.once('clientReady', async () => {
+// ------------------ EVENTOS ------------------
+client.once('ready', async () => {
     console.log(`[${new Date().toLocaleTimeString()}] ✅ Bot conectado como ${client.user.tag}`);
     await refreshTwitchToken();
     checkStreams();
     setInterval(checkStreams, 60 * 1000); // cada 1 minuto
     setInterval(refreshTwitchToken, 50 * 60 * 1000); // renovar token Twitch
+});
 
-    // ------------------ MODO TEST ------------------
-    if (TEST_MODE && TEST_CHANNEL_ID) {
-        const testChannel = client.channels.cache.get(TEST_CHANNEL_ID);
-        if (testChannel) {
-            const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
+// Ejecutar comandos de slash
+client.on('interactionCreate', async interaction => {
+    if (!interaction.isCommand()) return;
 
-            (async () => {
-                try {
-                    await rest.put(
-                        Routes.applicationCommands(client.user.id),
-                        { body: [{
-                            name: 'simulate',
-                            description: 'Simula un evento de Twitch, Kick o YouTube',
-                            options: [{
-                                name: 'tipo',
-                                type: 3, // STRING
-                                description: 'Tipo de simulación',
-                                required: true,
-                                choices: [
-                                    { name: 'Twitch', value: 'twitch' },
-                                    { name: 'Kick', value: 'kick' },
-                                    { name: 'YouTube', value: 'youtube' }
-                                ]
-                            }]
-                        }] }
-                    );
-                    console.log('Comando /simulate registrado en modo test ✅');
-                } catch (err) {
-                    console.error(err);
-                }
-            })();
+    const command = client.commands.get(interaction.commandName);
+    if (!command) return;
 
-            client.on('interactionCreate', async (interaction) => {
-                if (!interaction.isChatInputCommand()) return;
-                if (interaction.commandName === 'simulate') {
-                    const tipo = interaction.options.getString('tipo');
-
-                    if (tipo === 'twitch') {
-                        await testChannel.send({
-                            content: `<@&${MENTION_ROLE_ID}>`,
-                            embeds: [twitchEmbed('TwitchUserTest', 'Stream de prueba', 'https://twitch.tv/TwitchUserTest', 'https://placekitten.com/320/180')],
-                            allowedMentions: { roles: [MENTION_ROLE_ID] }
-                        });
-                    } else if (tipo === 'kick') {
-                        await testChannel.send({
-                            content: `<@&${MENTION_ROLE_ID}>`,
-                            embeds: [kickEmbed('KickUserTest', 'Stream de prueba', 'https://kick.com/KickUserTest')],
-                            allowedMentions: { roles: [MENTION_ROLE_ID] }
-                        });
-                    } else if (tipo === 'youtube') {
-                        await testChannel.send({
-                            content: `<@&${MENTION_ROLE_ID}>`,
-                            embeds: [youtubeEmbed('YouTubeUserTest', 'Video de prueba', 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', 'https://placekitten.com/320/180')],
-                            allowedMentions: { roles: [MENTION_ROLE_ID] }
-                        });
-                    }
-
-                    await interaction.reply({ content: `Simulación de ${tipo} enviada ✅`, ephemeral: true });
-                }
-            });
-        }
+    try {
+        await command.execute(interaction, client);
+    } catch (err) {
+        console.error(err);
+        interaction.reply({ content: 'Ocurrió un error ejecutando el comando.', ephemeral: true });
     }
 });
 
+// ------------------ LOGIN ------------------
 client.login(process.env.TOKEN);
