@@ -2,6 +2,7 @@ require('dotenv').config();
 const { Client, GatewayIntentBits } = require('discord.js');
 const axios = require('axios');
 const express = require('express');
+const fs = require('fs');
 const { twitchEmbed, kickEmbed, youtubeEmbed } = require('./messages');
 
 const client = new Client({
@@ -22,6 +23,17 @@ let twitchLive = false;
 let kickLive = false;
 let twitchToken = process.env.TWITCH_ACCESS_TOKEN || null;
 let kickToken = null;
+
+// ------------------ YOUTUBE CACHE ------------------
+const YOUTUBE_CACHE_FILE = './youtubeCache.json';
+let youtubeCache = {};
+if (fs.existsSync(YOUTUBE_CACHE_FILE)) {
+    youtubeCache = JSON.parse(fs.readFileSync(YOUTUBE_CACHE_FILE, 'utf-8'));
+}
+
+function saveYouTubeCache() {
+    fs.writeFileSync(YOUTUBE_CACHE_FILE, JSON.stringify(youtubeCache, null, 4));
+}
 
 // ------------------ EXPRESS PARA OAUTH KICK ------------------
 const app = express();
@@ -133,52 +145,52 @@ async function checkStreams() {
         console.log('Error Kick:', err.message);
     }
 
-    // -------------- YOUTUBE -----------------
-    const YOUTUBE_CHANNELS = [
-        { username: 'papirolafr', lastVideoId: null } // agregar más si se quiere
-    ];
+// -------------- YOUTUBE -----------------
+const YOUTUBE_CHANNELS = process.env.YOUTUBE_CHANNELS
+    ? process.env.YOUTUBE_CHANNELS.split(',').map(ch => ch.trim())
+    : [];
 
-    for (const ytChannel of YOUTUBE_CHANNELS) {
-        try {
-            const res = await axios.get(`https://www.googleapis.com/youtube/v3/channels`, {
-                params: {
-                    part: 'contentDetails',
-                    forUsername: ytChannel.username,
-                    key: process.env.YOUTUBE_API_KEY
-                }
-            });
-
-            const uploadsPlaylistId = res.data.items[0].contentDetails.relatedPlaylists.uploads;
-
-            const videosRes = await axios.get('https://www.googleapis.com/youtube/v3/playlistItems', {
-                params: {
-                    part: 'snippet',
-                    playlistId: uploadsPlaylistId,
-                    maxResults: 1,
-                    key: process.env.YOUTUBE_API_KEY
-                }
-            });
-
-            const latestVideo = videosRes.data.items[0].snippet;
-            const videoId = latestVideo.resourceId.videoId;
-
-            if (ytChannel.lastVideoId !== videoId) {
-                ytChannel.lastVideoId = videoId;
-
-                await channel.send({
-                    content: `<@&${MENTION_ROLE_ID}>`,
-                    embeds: [youtubeEmbed(
-                        ytChannel.username,
-                        latestVideo.title,
-                        `https://www.youtube.com/watch?v=${videoId}`,
-                        latestVideo.thumbnails.medium.url
-                    )],
-                    allowedMentions: { roles: [MENTION_ROLE_ID] }
-                });
+for (const username of YOUTUBE_CHANNELS) {
+    try {
+        const res = await axios.get(`https://www.googleapis.com/youtube/v3/channels`, {
+            params: {
+                part: 'contentDetails',
+                forUsername: username,
+                key: process.env.YOUTUBE_API_KEY
             }
-        } catch (err) {
-            console.log('Error YouTube:', err.message);
+        });
+
+        const uploadsPlaylistId = res.data.items[0].contentDetails.relatedPlaylists.uploads;
+
+        const videosRes = await axios.get('https://www.googleapis.com/youtube/v3/playlistItems', {
+            params: {
+                part: 'snippet',
+                playlistId: uploadsPlaylistId,
+                maxResults: 1,
+                key: process.env.YOUTUBE_API_KEY
+            }
+        });
+
+        const latestVideo = videosRes.data.items[0].snippet;
+        const videoId = latestVideo.resourceId.videoId;
+
+        if (youtubeCache[username] !== videoId) {
+            youtubeCache[username] = videoId;
+            saveYouTubeCache();
+
+            await channel.send({
+                content: `<@&${MENTION_ROLE_ID}>`,
+                embeds: [youtubeEmbed(
+                    username,
+                    latestVideo.title,
+                    `https://www.youtube.com/watch?v=${videoId}`,
+                    latestVideo.thumbnails.medium.url
+                )],
+                allowedMentions: { roles: [MENTION_ROLE_ID] }
+            });
         }
+    } catch (err) {
+        console.log('Error YouTube:', err.message);
     }
 }
 
