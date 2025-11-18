@@ -3,7 +3,7 @@ import fetch from 'node-fetch';
 
 const { KICK_USERNAME } = process.env;
 
-export async function getKickEmbed() {
+export async function getKickEmbed({ skipCache = false } = {}) {
   const res = await fetch(`https://kick.com/api/v2/channels/${KICK_USERNAME}`);
   const data = await res.json();
   const stream = data.livestream;

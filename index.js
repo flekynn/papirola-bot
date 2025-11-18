@@ -34,6 +34,12 @@ client.once('clientReady', async () => {
   }
 
   await channel.send('🧪 Bot iniciado en canal de pruebas.');
+
+  // Precargar cache sin anunciar
+  await getTwitchEmbed({ skipCache: true });
+  await getYoutubeEmbed({ skipCache: true });
+  await getKickEmbed({ skipCache: true });
+
   startPolling(channel);
 });
 

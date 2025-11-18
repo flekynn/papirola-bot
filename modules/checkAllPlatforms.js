@@ -1,18 +1,18 @@
 import { getTwitchEmbed } from './twitchEmbed.js';
-import { getKickEmbed } from './kickEmbed.js';
 import { getYoutubeEmbed } from './youtubeEmbed.js';
+import { getKickEmbed } from './kickEmbed.js';
 
-export async function checkAllPlatforms() {
+export async function checkAllPlatforms({ skipCache = false } = {}) {
   const embeds = [];
 
-  const twitch = await getTwitchEmbed();
+  const twitch = await getTwitchEmbed({ skipCache });
   if (twitch) embeds.push(twitch);
 
-  const kick = await getKickEmbed();
-  if (kick) embeds.push(kick);
-
-  const youtube = await getYoutubeEmbed();
+  const youtube = await getYoutubeEmbed({ skipCache });
   if (youtube) embeds.push(youtube);
+
+  const kick = await getKickEmbed({ skipCache });
+  if (kick) embeds.push(kick);
 
   return embeds;
 }

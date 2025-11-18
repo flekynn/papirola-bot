@@ -11,7 +11,7 @@ const commands = [
       {
         name: 'plataforma',
         description: 'Plataforma a consultar',
-        type: 3, // STRING
+        type: 3,
         required: true,
         choices: [
           { name: 'twitch', value: 'twitch' },
