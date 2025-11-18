@@ -119,80 +119,81 @@ async function checkStreams() {
     }
 
     // -------------- KICK -----------------
-    if (!kickToken) return;
+    if (kickToken) {
+        try {
+            const kickRes = await axios.get(`https://kick.com/api/v1/channels/${KICK_USER}`, {
+                headers: { 'Authorization': `Bearer ${kickToken}` }
+            });
 
-    try {
-        const kickRes = await axios.get(`https://kick.com/api/v1/channels/${KICK_USER}`, {
-            headers: { 'Authorization': `Bearer ${kickToken}` }
-        });
+            if (kickRes.status === 200) {
+                const isLiveKick = kickRes.data.is_live;
 
-        if (kickRes.status === 200) {
-            const isLiveKick = kickRes.data.is_live;
+                if (isLiveKick && !kickLive) {
+                    const stream = kickRes.data;
+                    await channel.send({
+                        content: `<@&${MENTION_ROLE_ID}>`,
+                        embeds: [kickEmbed(KICK_USER, stream.title, `https://kick.com/${KICK_USER}`)],
+                        allowedMentions: { roles: [MENTION_ROLE_ID] }
+                    });
+                    kickLive = true;
+                } else if (!isLiveKick) {
+                    kickLive = false;
+                }
+            }
+        } catch (err) {
+            console.log('Error Kick:', err.message);
+        }
+    }
 
-            if (isLiveKick && !kickLive) {
-                const stream = kickRes.data;
+    // -------------- YOUTUBE -----------------
+    const YOUTUBE_CHANNELS = process.env.YOUTUBE_CHANNELS
+        ? process.env.YOUTUBE_CHANNELS.split(',').map(ch => ch.trim())
+        : [];
+
+    for (const username of YOUTUBE_CHANNELS) {
+        try {
+            const res = await axios.get(`https://www.googleapis.com/youtube/v3/channels`, {
+                params: {
+                    part: 'contentDetails',
+                    forUsername: username,
+                    key: process.env.YOUTUBE_API_KEY
+                }
+            });
+
+            const uploadsPlaylistId = res.data.items[0].contentDetails.relatedPlaylists.uploads;
+
+            const videosRes = await axios.get('https://www.googleapis.com/youtube/v3/playlistItems', {
+                params: {
+                    part: 'snippet',
+                    playlistId: uploadsPlaylistId,
+                    maxResults: 1,
+                    key: process.env.YOUTUBE_API_KEY
+                }
+            });
+
+            const latestVideo = videosRes.data.items[0].snippet;
+            const videoId = latestVideo.resourceId.videoId;
+
+            if (youtubeCache[username] !== videoId) {
+                youtubeCache[username] = videoId;
+                saveYouTubeCache();
+
                 await channel.send({
                     content: `<@&${MENTION_ROLE_ID}>`,
-                    embeds: [kickEmbed(KICK_USER, stream.title, `https://kick.com/${KICK_USER}`)],
+                    embeds: [youtubeEmbed(
+                        username,
+                        latestVideo.title,
+                        `https://www.youtube.com/watch?v=${videoId}`,
+                        latestVideo.thumbnails.medium.url
+                    )],
                     allowedMentions: { roles: [MENTION_ROLE_ID] }
                 });
-                kickLive = true;
-            } else if (!isLiveKick) {
-                kickLive = false;
             }
+        } catch (err) {
+            console.log('Error YouTube:', err.message);
         }
-    } catch (err) {
-        console.log('Error Kick:', err.message);
     }
-
-// -------------- YOUTUBE -----------------
-const YOUTUBE_CHANNELS = process.env.YOUTUBE_CHANNELS
-    ? process.env.YOUTUBE_CHANNELS.split(',').map(ch => ch.trim())
-    : [];
-
-for (const username of YOUTUBE_CHANNELS) {
-    try {
-        const res = await axios.get(`https://www.googleapis.com/youtube/v3/channels`, {
-            params: {
-                part: 'contentDetails',
-                forUsername: username,
-                key: process.env.YOUTUBE_API_KEY
-            }
-        });
-
-        const uploadsPlaylistId = res.data.items[0].contentDetails.relatedPlaylists.uploads;
-
-        const videosRes = await axios.get('https://www.googleapis.com/youtube/v3/playlistItems', {
-            params: {
-                part: 'snippet',
-                playlistId: uploadsPlaylistId,
-                maxResults: 1,
-                key: process.env.YOUTUBE_API_KEY
-            }
-        });
-
-        const latestVideo = videosRes.data.items[0].snippet;
-        const videoId = latestVideo.resourceId.videoId;
-
-        if (youtubeCache[username] !== videoId) {
-            youtubeCache[username] = videoId;
-            saveYouTubeCache();
-
-            await channel.send({
-                content: `<@&${MENTION_ROLE_ID}>`,
-                embeds: [youtubeEmbed(
-                    username,
-                    latestVideo.title,
-                    `https://www.youtube.com/watch?v=${videoId}`,
-                    latestVideo.thumbnails.medium.url
-                )],
-                allowedMentions: { roles: [MENTION_ROLE_ID] }
-            });
-        }
-    } catch (err) {
-        console.log('Error YouTube:', err.message);
-    }
-}
+} 
 
 // ------------------ BOT ------------------
 client.once('ready', async () => {
