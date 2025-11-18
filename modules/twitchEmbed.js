@@ -20,7 +20,21 @@ async function getAccessToken() {
   return accessToken;
 }
 
-export async function getTwitchEmbed() {
+export async function getTwitchEmbed(simulate = false) {
+  if (simulate) {
+    return new EmbedBuilder()
+      .setTitle('🔴 flekynn está en vivo en Twitch')
+      .setDescription('Jugando Half-Life mientras suena Aphex Twin.')
+      .setURL('https://twitch.tv/flekynn')
+      .setColor(0x9146FF)
+      .setThumbnail('https://static-cdn.jtvnw.net/previews-ttv/live_user_flekynn-320x180.jpg')
+      .addFields(
+        { name: 'Juego', value: 'Half-Life', inline: true },
+        { name: 'Viewers', value: '42', inline: true }
+      )
+      .setTimestamp(new Date());
+  }
+
   const token = await getAccessToken();
   const res = await fetch(`https://api.twitch.tv/helix/streams?user_login=${TWITCH_USERNAME}`, {
     headers: {
