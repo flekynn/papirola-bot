@@ -1,11 +1,29 @@
 import { EmbedBuilder } from 'discord.js';
 import fetch from 'node-fetch';
+import fs from 'fs';
 
 const {
   TWITCH_CLIENT_ID,
   TWITCH_CLIENT_SECRET,
   TWITCH_USERNAME
 } = process.env;
+
+const CACHE_FILE = './twitchCache.json';
+
+function getLastVodId() {
+  if (!fs.existsSync(CACHE_FILE)) return null;
+  const raw = fs.readFileSync(CACHE_FILE);
+  try {
+    const json = JSON.parse(raw);
+    return json.lastVodId;
+  } catch {
+    return null;
+  }
+}
+
+function setLastVodId(id) {
+  fs.writeFileSync(CACHE_FILE, JSON.stringify({ lastVodId: id }));
+}
 
 let accessToken = null;
 
@@ -20,7 +38,7 @@ async function getAccessToken() {
   return accessToken;
 }
 
-export async function getTwitchEmbed() {
+export async function getTwitchEmbed({ skipCache = false } = {}) {
   const token = await getAccessToken();
 
   const userRes = await fetch(`https://api.twitch.tv/helix/users?login=${TWITCH_USERNAME}`, {
@@ -74,6 +92,12 @@ export async function getTwitchEmbed() {
   const vodData = await vodRes.json();
   const vod = vodData.data?.[0];
   if (!vod) return null;
+
+  if (!skipCache) {
+    const lastId = getLastVodId();
+    if (vod.id === lastId) return null;
+    setLastVodId(vod.id);
+  }
 
   return new EmbedBuilder()
     .setTitle(`📼 Último stream de ${TWITCH_USERNAME}`)

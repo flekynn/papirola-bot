@@ -48,19 +48,16 @@ client.on('interactionCreate', async (interaction) => {
       await interaction.deferReply();
 
       if (plataforma === 'twitch') {
-        embed = await getTwitchEmbed();
+        embed = await getTwitchEmbed({ skipCache: true });
       } else if (plataforma === 'kick') {
-        embed = await getKickEmbed();
+        embed = await getKickEmbed({ skipCache: true });
       } else if (plataforma === 'youtube') {
-        embed = await getYoutubeEmbed();
+        embed = await getYoutubeEmbed({ skipCache: true });
       }
 
       if (!embed) {
-        embed = new EmbedBuilder()
-          .setTitle(`📼 No hay contenido activo en ${plataforma}`)
-          .setDescription(`Mostrando el último contenido publicado en ${plataforma}.`)
-          .setColor(0x777777)
-          .setTimestamp(new Date());
+        await interaction.editReply('⚠️ No se encontró contenido en esta plataforma.');
+        return;
       }
 
       await interaction.editReply({ embeds: [embed] });
@@ -79,7 +76,7 @@ client.on('interactionCreate', async (interaction) => {
   if (interaction.commandName === 'force_check') {
     try {
       await interaction.deferReply();
-      const events = await checkAllPlatforms();
+      const events = await checkAllPlatforms({ skipCache: false });
       if (events.length === 0) {
         await interaction.editReply('✅ No hay novedades en Twitch, YouTube ni Kick.');
       } else {
@@ -107,7 +104,7 @@ function startPolling(channel) {
 
   setInterval(async () => {
     try {
-      const events = await checkAllPlatforms();
+      const events = await checkAllPlatforms({ skipCache: false });
       for (const evt of events) {
         await channel.send({ embeds: [evt] });
       }
