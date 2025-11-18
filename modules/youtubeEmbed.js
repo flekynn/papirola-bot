@@ -1,52 +1,49 @@
 import { EmbedBuilder } from 'discord.js';
-import fs from 'node:fs/promises';
-import { request } from 'undici';
+import fetch from 'node-fetch';
+import fs from 'fs';
 
-const cachePath = 'youtubeCache.json';
+const {
+  YOUTUBE_API_KEY,
+  YOUTUBE_CHANNEL_ID
+} = process.env;
 
-async function readCache() {
+const CACHE_FILE = './youtubeCache.json';
+
+function getLastVideoId() {
+  if (!fs.existsSync(CACHE_FILE)) return null;
+  const raw = fs.readFileSync(CACHE_FILE);
   try {
-    const raw = await fs.readFile(cachePath, 'utf8');
-    return JSON.parse(raw);
+    const json = JSON.parse(raw);
+    return json.lastVideoId;
   } catch {
-    return { lastVideoIdByChannel: {} };
+    return null;
   }
 }
 
-async function writeCache(cache) {
-  await fs.writeFile(cachePath, JSON.stringify(cache, null, 2), 'utf8');
+function setLastVideoId(id) {
+  fs.writeFileSync(CACHE_FILE, JSON.stringify({ lastVideoId: id }));
 }
 
-export async function checkYouTubeUploads() {
-  const { YOUTUBE_API_KEY, YOUTUBE_CHANNEL_ID } = process.env;
-  if (!YOUTUBE_API_KEY || !YOUTUBE_CHANNEL_ID) return [];
-
-  const cache = await readCache();
-  const res = await request('https://www.googleapis.com/youtube/v3/search?' + new URLSearchParams({
-    key: YOUTUBE_API_KEY,
-    channelId: YOUTUBE_CHANNEL_ID,
-    part: 'snippet',
-    order: 'date',
-    maxResults: '1'
-  }).toString());
-
-  const data = await res.body.json();
+export async function getYoutubeEmbed() {
+  const res = await fetch(`https://www.googleapis.com/youtube/v3/search?key=${YOUTUBE_API_KEY}&channelId=${YOUTUBE_CHANNEL_ID}&part=snippet,id&order=date&maxResults=1`);
+  const data = await res.json();
   const item = data.items?.[0];
-  const videoId = item?.id?.videoId;
-  if (!videoId) return [];
+  if (!item || item.id.kind !== 'youtube#video') return null;
 
-  const last = cache.lastVideoIdByChannel[YOUTUBE_CHANNEL_ID];
-  if (last === videoId) return [];
+  const videoId = item.id.videoId;
+  const lastId = getLastVideoId();
+  if (videoId === lastId) return null;
 
-  cache.lastVideoIdByChannel[YOUTUBE_CHANNEL_ID] = videoId;
-  await writeCache(cache);
+  setLastVideoId(videoId);
 
-  const embed = new EmbedBuilder()
-    .setTitle(`Nuevo video: ${item.snippet.title}`)
-    .setDescription(item.snippet.description?.slice(0, 200) ?? 'Nuevo upload')
-    .setURL(`https://youtu.be/${videoId}`)
+  return new EmbedBuilder()
+    .setTitle(`📺 Nuevo video en YouTube`)
+    .setDescription(item.snippet.title)
+    .setURL(`https://youtube.com/watch?v=${videoId}`)
     .setColor(0xFF0000)
-    .setTimestamp(new Date(item.snippet.publishedAt));
-
-  return [embed];
+    .setThumbnail(item.snippet.thumbnails?.high?.url || null)
+    .addFields(
+      { name: 'Publicado', value: item.snippet.publishedAt, inline: true }
+    )
+    .setTimestamp(new Date());
 }
