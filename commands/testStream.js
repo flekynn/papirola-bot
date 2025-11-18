@@ -1,10 +1,10 @@
 const { SlashCommandBuilder } = require('discord.js');
-const { twitchEmbed, kickEmbed, youtubeEmbed } = require('../messages');
+const { twitchEmbed, kickEmbed, youtubeEmbed } = require('../modules/messages');
 
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('test_stream')
-        .setDescription('Simula un aviso de transmisión o video nuevo')
+        .setDescription('Simula un aviso de transmisión o video nuevo en el canal de prueba')
         .addStringOption(option =>
             option.setName('plataforma')
                 .setDescription('Plataforma a simular: twitch, kick, youtube')
@@ -71,10 +71,10 @@ module.exports = {
                     return interaction.reply('Plataforma no válida. Debe ser: twitch, kick o youtube.');
             }
 
-            interaction.reply(`Simulación de ${plataforma} enviada ✅`);
+            interaction.reply({ content: `Simulación de ${plataforma} enviada ✅`, ephemeral: true });
         } catch (err) {
             console.error('Error simulando aviso:', err);
-            interaction.reply('Ocurrió un error al enviar la simulación.');
+            interaction.reply({ content: 'Ocurrió un error al enviar la simulación.', ephemeral: true });
         }
     }
 };
