@@ -4,7 +4,7 @@ const axios = require('axios');
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
-const { twitchEmbed, kickEmbed, youtubeEmbed } = require('./messages');
+const { twitchEmbed, kickEmbed, youtubeEmbed } = require('./modules/messages');
 
 // ------------------ CLIENTE DISCORD ------------------
 const client = new Client({
@@ -30,6 +30,7 @@ const STREAM_CHANNEL_ID = process.env.STREAM_CHANNEL_ID;
 const TWITCH_USER = process.env.TWITCH_USER;
 const KICK_USER = process.env.KICK_USER;
 const MENTION_ROLE_ID = process.env.MENTION_ROLE_ID;
+const TEST_CHANNEL_ID = process.env.TEST_CHANNEL_ID;
 
 let twitchLive = false;
 let kickLive = false;
