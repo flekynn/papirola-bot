@@ -2,7 +2,8 @@ import 'dotenv/config';
 import {
   Client,
   GatewayIntentBits,
-  Partials
+  Partials,
+  EmbedBuilder
 } from 'discord.js';
 import { checkAllPlatforms } from './modules/checkAllPlatforms.js';
 import { getTwitchEmbed } from './modules/twitchEmbed.js';
@@ -40,28 +41,41 @@ client.on('interactionCreate', async (interaction) => {
   if (!interaction.isChatInputCommand()) return;
 
   if (interaction.commandName === 'test_stream') {
-    await interaction.deferReply();
-    const plataforma = interaction.options.getString('plataforma');
-    let embed;
+    try {
+      await interaction.deferReply();
+      const plataforma = interaction.options.getString('plataforma');
+      let embed;
 
-    if (plataforma === 'twitch') {
-      embed = await getTwitchEmbed();
-    } else if (plataforma === 'kick') {
-      embed = await getKickEmbed();
-    } else if (plataforma === 'youtube') {
-      embed = await getYoutubeEmbed();
-    }
+      if (plataforma === 'twitch') {
+        embed = await getTwitchEmbed();
+      } else if (plataforma === 'kick') {
+        embed = await getKickEmbed();
+      } else if (plataforma === 'youtube') {
+        embed = await getYoutubeEmbed();
+      }
 
-    if (!embed) {
-      await interaction.editReply('⚠️ No se pudo generar el embed.');
-    } else {
+      if (!embed) {
+        embed = new EmbedBuilder()
+          .setTitle(`⚠️ No hay contenido activo en ${plataforma}`)
+          .setDescription(`No se encontró stream o video nuevo para ${plataforma}.`)
+          .setColor(0xCCCCCC)
+          .setTimestamp(new Date());
+      }
+
       await interaction.editReply({ embeds: [embed] });
+    } catch (err) {
+      console.error('[test_stream:error]', err);
+      if (interaction.replied || interaction.deferred) {
+        await interaction.editReply('❌ Error al generar el embed.');
+      } else {
+        await interaction.reply('❌ Error al generar el embed.');
+      }
     }
   }
 
   if (interaction.commandName === 'force_check') {
-    await interaction.deferReply();
     try {
+      await interaction.deferReply();
       const events = await checkAllPlatforms();
       if (events.length === 0) {
         await interaction.editReply('✅ No hay novedades en Twitch, YouTube ni Kick.');
@@ -73,7 +87,11 @@ client.on('interactionCreate', async (interaction) => {
       }
     } catch (err) {
       console.error('[force_check:error]', err);
-      await interaction.editReply('❌ Error al ejecutar el chequeo.');
+      if (interaction.replied || interaction.deferred) {
+        await interaction.editReply('❌ Error al ejecutar el chequeo.');
+      } else {
+        await interaction.reply('❌ Error al ejecutar el chequeo.');
+      }
     }
   }
 });
