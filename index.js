@@ -1,7 +1,8 @@
 require('dotenv').config();
-const { Client, GatewayIntentBits, EmbedBuilder } = require('discord.js');
+const { Client, GatewayIntentBits } = require('discord.js');
 const axios = require('axios');
 const express = require('express');
+const { twitchEmbed, kickEmbed, youtubeEmbed } = require('./messages');
 
 const client = new Client({
     intents: [
@@ -15,7 +16,7 @@ const client = new Client({
 const STREAM_CHANNEL_ID = process.env.STREAM_CHANNEL_ID;
 const TWITCH_USER = process.env.TWITCH_USER;
 const KICK_USER = process.env.KICK_USER;
-const MENTION_ROLE_ID = process.env.MENTION_ROLE_ID; // rol a mencionar en Discord
+const MENTION_ROLE_ID = process.env.MENTION_ROLE_ID;
 
 let twitchLive = false;
 let kickLive = false;
@@ -87,16 +88,14 @@ async function checkStreams() {
 
         if (isLiveTwitch && !twitchLive) {
             const stream = twitchRes.data.data[0];
-            const embed = new EmbedBuilder()
-                .setTitle(`${TWITCH_USER} está en vivo en Twitch!`)
-                .setDescription(stream.title)
-                .setURL(`https://twitch.tv/${TWITCH_USER}`)
-                .setColor(0x9146FF)
-                .setThumbnail(stream.thumbnail_url.replace('{width}', '320').replace('{height}', '180'));
-
             await channel.send({
                 content: `<@&${MENTION_ROLE_ID}>`,
-                embeds: [embed],
+                embeds: [twitchEmbed(
+                    TWITCH_USER,
+                    stream.title,
+                    `https://twitch.tv/${TWITCH_USER}`,
+                    stream.thumbnail_url.replace('{width}','320').replace('{height}','180')
+                )],
                 allowedMentions: { roles: [MENTION_ROLE_ID] }
             });
             twitchLive = true;
@@ -120,15 +119,9 @@ async function checkStreams() {
 
             if (isLiveKick && !kickLive) {
                 const stream = kickRes.data;
-                const embed = new EmbedBuilder()
-                    .setTitle(`${KICK_USER} está en vivo en Kick!`)
-                    .setURL(`https://kick.com/${KICK_USER}`)
-                    .setColor(0xFF4500)
-                    .setDescription(stream.title || 'Transmisión en vivo');
-
                 await channel.send({
                     content: `<@&${MENTION_ROLE_ID}>`,
-                    embeds: [embed],
+                    embeds: [kickEmbed(KICK_USER, stream.title, `https://kick.com/${KICK_USER}`)],
                     allowedMentions: { roles: [MENTION_ROLE_ID] }
                 });
                 kickLive = true;
@@ -139,16 +132,11 @@ async function checkStreams() {
     } catch (err) {
         console.log('Error Kick:', err.message);
     }
-}
 
-// ------------------ YOUTUBE -----------------
-const YOUTUBE_CHANNELS = [
-    { username: 'papirolafr', lastVideoId: null } // agregar más canales si se quiere
-];
-
-async function checkYouTube() {
-    const channel = client.channels.cache.get(STREAM_CHANNEL_ID);
-    if (!channel) return;
+    // -------------- YOUTUBE -----------------
+    const YOUTUBE_CHANNELS = [
+        { username: 'papirolafr', lastVideoId: null } // agregar más si se quiere
+    ];
 
     for (const ytChannel of YOUTUBE_CHANNELS) {
         try {
@@ -177,20 +165,17 @@ async function checkYouTube() {
             if (ytChannel.lastVideoId !== videoId) {
                 ytChannel.lastVideoId = videoId;
 
-                const embed = new EmbedBuilder()
-                    .setTitle(`Nuevo video de ${ytChannel.username} en YouTube!`)
-                    .setDescription(latestVideo.title)
-                    .setURL(`https://www.youtube.com/watch?v=${videoId}`)
-                    .setColor(0xFF0000)
-                    .setThumbnail(latestVideo.thumbnails.medium.url);
-
                 await channel.send({
                     content: `<@&${MENTION_ROLE_ID}>`,
-                    embeds: [embed],
+                    embeds: [youtubeEmbed(
+                        ytChannel.username,
+                        latestVideo.title,
+                        `https://www.youtube.com/watch?v=${videoId}`,
+                        latestVideo.thumbnails.medium.url
+                    )],
                     allowedMentions: { roles: [MENTION_ROLE_ID] }
                 });
             }
-
         } catch (err) {
             console.log('Error YouTube:', err.message);
         }
@@ -202,9 +187,7 @@ client.once('ready', async () => {
     console.log(`[${new Date().toLocaleTimeString()}] ✅ Bot conectado como ${client.user.tag}`);
     await refreshTwitchToken();
     checkStreams();
-    checkYouTube();
     setInterval(checkStreams, 60 * 1000); // cada 1 minuto
-    setInterval(checkYouTube, 60 * 1000); // cada 1 minuto
     setInterval(refreshTwitchToken, 50 * 60 * 1000); // renovar token Twitch
 });
 
