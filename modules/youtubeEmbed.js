@@ -1,64 +1,53 @@
-import { EmbedBuilder } from 'discord.js';
 import fetch from 'node-fetch';
-import fs from 'fs';
+import { EmbedBuilder } from 'discord.js';
 
-const {
-  YOUTUBE_API_KEY,
-  YOUTUBE_CHANNEL_ID
-} = process.env;
+const { YOUTUBE_API_KEY, YOUTUBE_CHANNEL_ID } = process.env;
 
-const CACHE_FILE = './youtubeCache.json';
-
-function getLastVideoId() {
-  if (!fs.existsSync(CACHE_FILE)) return null;
-  const raw = fs.readFileSync(CACHE_FILE);
-  try {
-    const json = JSON.parse(raw);
-    return json.lastVideoId;
-  } catch {
-    return null;
-  }
-}
-
-function setLastVideoId(id) {
-  fs.writeFileSync(CACHE_FILE, JSON.stringify({ lastVideoId: id }));
-}
-
-function parseDuration(iso) {
-  const match = iso.match(/PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
-  const h = match?.[1] || '0';
-  const m = match?.[2] || '0';
-  const s = match?.[3] || '0';
-  return `${h}h${m}m${s}s`;
-}
+let lastVideoId = null;
 
 export async function getYoutubeEmbed({ skipCache = false } = {}) {
-  const res = await fetch(`https://www.googleapis.com/youtube/v3/search?key=${YOUTUBE_API_KEY}&channelId=${YOUTUBE_CHANNEL_ID}&part=snippet,id&order=date&maxResults=1`);
-  const data = await res.json();
-  const item = data.items?.[0];
-  if (!item || item.id.kind !== 'youtube#video') return null;
+  const url = `https://www.googleapis.com/youtube/v3/search?key=${YOUTUBE_API_KEY}&channelId=${YOUTUBE_CHANNEL_ID}&part=snippet,id&order=date&maxResults=1`;
 
-  const videoId = item.id.videoId;
+  try {
+    const res = await fetch(url);
+    const data = await res.json();
 
-  if (!skipCache) {
-    const lastId = getLastVideoId();
-    if (videoId === lastId) return null;
-    setLastVideoId(videoId);
+    console.log('[youtubeEmbed] API response:', JSON.stringify(data, null, 2));
+
+    if (!data.items || data.items.length === 0) {
+      console.log('[youtubeEmbed] No se encontraron videos.');
+      return null;
+    }
+
+    const video = data.items[0];
+
+    if (video.id.kind !== 'youtube#video') {
+      console.log('[youtubeEmbed] El contenido más reciente no es un video.');
+      return null;
+    }
+
+    const videoId = video.id.videoId;
+
+    if (!skipCache && videoId === lastVideoId) {
+      console.log('[youtubeEmbed] Video ya detectado, ignorando:', videoId);
+      return null;
+    }
+
+    lastVideoId = videoId;
+
+    const embed = new EmbedBuilder()
+      .setTitle(video.snippet.title)
+      .setURL(`https://www.youtube.com/watch?v=${videoId}`)
+      .setDescription(video.snippet.description || 'Nuevo video en YouTube')
+      .setThumbnail(video.snippet.thumbnails.high.url)
+      .setTimestamp(new Date(video.snippet.publishedAt))
+      .setColor(0xff0000)
+      .setAuthor({ name: video.snippet.channelTitle });
+
+    console.log('[youtubeEmbed] Nuevo video detectado:', videoId);
+    return embed;
+  } catch (err) {
+    console.error('[youtubeEmbed:error]', err);
+    return null;
   }
-
-  const detailsRes = await fetch(`https://www.googleapis.com/youtube/v3/videos?part=contentDetails&id=${videoId}&key=${YOUTUBE_API_KEY}`);
-  const detailsData = await detailsRes.json();
-  const durationRaw = detailsData.items?.[0]?.contentDetails?.duration || 'PT0M';
-
-  return new EmbedBuilder()
-    .setTitle(`📺 Último video en YouTube`)
-    .setDescription(item.snippet.title)
-    .setURL(`https://youtube.com/watch?v=${videoId}`)
-    .setColor(0xFF0000)
-    .setThumbnail(item.snippet.thumbnails?.high?.url || null)
-    .addFields(
-      { name: 'Duración', value: parseDuration(durationRaw), inline: true },
-      { name: 'Publicado', value: item.snippet.publishedAt, inline: true }
-    )
-    .setTimestamp(new Date());
 }
