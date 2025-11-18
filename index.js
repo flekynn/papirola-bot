@@ -24,7 +24,6 @@ const client = new Client({
   partials: [Partials.Channel]
 });
 
-// ⚡ Evento actualizado: clientReady
 client.once('clientReady', async () => {
   console.log(`[clientReady] Conectado como ${client.user.tag}`);
   const channel = await client.channels.fetch(TEST_CHANNEL_ID).catch(() => null);
@@ -40,28 +39,26 @@ client.once('clientReady', async () => {
 client.on('interactionCreate', async (interaction) => {
   if (!interaction.isChatInputCommand()) return;
 
-  // 🔧 Comando de prueba
   if (interaction.commandName === 'test_stream') {
     await interaction.deferReply();
     const plataforma = interaction.options.getString('plataforma');
     let embed;
 
     if (plataforma === 'twitch') {
-      embed = await getTwitchEmbed(true);
+      embed = await getTwitchEmbed();
     } else if (plataforma === 'kick') {
-      embed = await getKickEmbed(true);
+      embed = await getKickEmbed();
     } else if (plataforma === 'youtube') {
-      embed = await getYoutubeEmbed(true);
+      embed = await getYoutubeEmbed();
     }
 
     if (!embed) {
-      await interaction.editReply('⚠️ No se pudo generar el embed de prueba.');
+      await interaction.editReply('⚠️ No se pudo generar el embed.');
     } else {
       await interaction.editReply({ embeds: [embed] });
     }
   }
 
-  // 🔧 Comando de chequeo manual
   if (interaction.commandName === 'force_check') {
     await interaction.deferReply();
     try {
@@ -81,7 +78,6 @@ client.on('interactionCreate', async (interaction) => {
   }
 });
 
-// 🌀 Polling automático
 function startPolling(channel) {
   const interval = Number(CHECK_INTERVAL_MS);
   console.log(`[poll] Intervalo: ${interval}ms`);
