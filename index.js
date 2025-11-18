@@ -25,7 +25,8 @@ const client = new Client({
   partials: [Partials.Channel]
 });
 
-client.once('ready', async () => {
+// ⚠️ Cambiado a clientReady para evitar el warning
+client.once('clientReady', async () => {
   console.log(`[clientReady] Conectado como ${client.user.tag}`);
   const channel = await client.channels.fetch(TEST_CHANNEL_ID).catch(() => null);
   if (!channel || !channel.isTextBased()) {
@@ -51,6 +52,7 @@ client.on('interactionCreate', async (interaction) => {
     let embed;
 
     try {
+      // deferReply solo una vez
       await interaction.deferReply();
 
       if (plataforma === 'twitch') {
@@ -62,8 +64,7 @@ client.on('interactionCreate', async (interaction) => {
       }
 
       if (!embed) {
-        await interaction.editReply('⚠️ No se encontró contenido en esta plataforma.');
-        return;
+        return await interaction.editReply('⚠️ No se encontró contenido en esta plataforma.');
       }
 
       await interaction.editReply({
@@ -72,13 +73,7 @@ client.on('interactionCreate', async (interaction) => {
       });
     } catch (err) {
       console.error('[test_stream:error]', err);
-      try {
-        if (interaction.deferred || interaction.replied) {
-          await interaction.editReply('❌ Error al generar el embed.');
-        }
-      } catch (nestedErr) {
-        console.error('[test_stream:editReply fallback]', nestedErr);
-      }
+      // ❌ No intentamos responder de nuevo aquí, solo logueamos
     }
   }
 
@@ -99,13 +94,7 @@ client.on('interactionCreate', async (interaction) => {
       }
     } catch (err) {
       console.error('[force_check:error]', err);
-      try {
-        if (interaction.deferred || interaction.replied) {
-          await interaction.editReply('❌ Error al ejecutar el chequeo.');
-        }
-      } catch (nestedErr) {
-        console.error('[force_check:editReply fallback]', nestedErr);
-      }
+      // ❌ Igual que arriba, no respondemos de nuevo en el catch
     }
   }
 });
