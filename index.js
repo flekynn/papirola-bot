@@ -41,10 +41,11 @@ client.on('interactionCreate', async (interaction) => {
   if (!interaction.isChatInputCommand()) return;
 
   if (interaction.commandName === 'test_stream') {
+    const plataforma = interaction.options.getString('plataforma');
+    let embed;
+
     try {
       await interaction.deferReply();
-      const plataforma = interaction.options.getString('plataforma');
-      let embed;
 
       if (plataforma === 'twitch') {
         embed = await getTwitchEmbed();
@@ -56,19 +57,21 @@ client.on('interactionCreate', async (interaction) => {
 
       if (!embed) {
         embed = new EmbedBuilder()
-          .setTitle(`⚠️ No hay contenido activo en ${plataforma}`)
-          .setDescription(`No se encontró stream o video nuevo para ${plataforma}.`)
-          .setColor(0xCCCCCC)
+          .setTitle(`📼 No hay contenido activo en ${plataforma}`)
+          .setDescription(`Mostrando el último contenido publicado en ${plataforma}.`)
+          .setColor(0x777777)
           .setTimestamp(new Date());
       }
 
       await interaction.editReply({ embeds: [embed] });
     } catch (err) {
       console.error('[test_stream:error]', err);
-      if (interaction.replied || interaction.deferred) {
-        await interaction.editReply('❌ Error al generar el embed.');
-      } else {
-        await interaction.reply('❌ Error al generar el embed.');
+      try {
+        if (interaction.deferred || interaction.replied) {
+          await interaction.editReply('❌ Error al generar el embed.');
+        }
+      } catch (nestedErr) {
+        console.error('[test_stream:editReply fallback]', nestedErr);
       }
     }
   }
@@ -87,10 +90,12 @@ client.on('interactionCreate', async (interaction) => {
       }
     } catch (err) {
       console.error('[force_check:error]', err);
-      if (interaction.replied || interaction.deferred) {
-        await interaction.editReply('❌ Error al ejecutar el chequeo.');
-      } else {
-        await interaction.reply('❌ Error al ejecutar el chequeo.');
+      try {
+        if (interaction.deferred || interaction.replied) {
+          await interaction.editReply('❌ Error al ejecutar el chequeo.');
+        }
+      } catch (nestedErr) {
+        console.error('[force_check:editReply fallback]', nestedErr);
       }
     }
   }
