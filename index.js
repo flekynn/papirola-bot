@@ -1,5 +1,5 @@
 require('dotenv').config();
-const { Client, GatewayIntentBits } = require('discord.js');
+const { Client, GatewayIntentBits, REST, Routes } = require('discord.js');
 const axios = require('axios');
 const express = require('express');
 const fs = require('fs');
@@ -18,6 +18,8 @@ const STREAM_CHANNEL_ID = process.env.STREAM_CHANNEL_ID;
 const TWITCH_USER = process.env.TWITCH_USER;
 const KICK_USER = process.env.KICK_USER;
 const MENTION_ROLE_ID = process.env.MENTION_ROLE_ID;
+const TEST_MODE = process.env.TEST_MODE === 'true';
+const TEST_CHANNEL_ID = process.env.TEST_CHANNEL_ID;
 
 let twitchLive = false;
 let kickLive = false;
@@ -27,12 +29,11 @@ let kickToken = null;
 // ------------------ YOUTUBE CACHE ------------------
 const YOUTUBE_CACHE_FILE = './youtubeCache.json';
 let youtubeCache = {};
-
 if (fs.existsSync(YOUTUBE_CACHE_FILE)) {
     try {
         youtubeCache = JSON.parse(fs.readFileSync(YOUTUBE_CACHE_FILE, 'utf-8'));
     } catch {
-        console.log(`[${new Date().toLocaleTimeString()}] ⚠️ youtubeCache.json vacío o corrupto, se inicializa vacío`);
+        console.log('[⚠️] youtubeCache.json vacío o corrupto, se inicializa vacío');
         youtubeCache = {};
     }
 }
@@ -202,12 +203,75 @@ async function checkStreams() {
 }
 
 // ------------------ BOT ------------------
-client.once('ready', async () => {
+client.once('clientReady', async () => {
     console.log(`[${new Date().toLocaleTimeString()}] ✅ Bot conectado como ${client.user.tag}`);
     await refreshTwitchToken();
     checkStreams();
     setInterval(checkStreams, 60 * 1000); // cada 1 minuto
     setInterval(refreshTwitchToken, 50 * 60 * 1000); // renovar token Twitch
+
+    // ------------------ MODO TEST ------------------
+    if (TEST_MODE && TEST_CHANNEL_ID) {
+        const testChannel = client.channels.cache.get(TEST_CHANNEL_ID);
+        if (testChannel) {
+            const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
+
+            (async () => {
+                try {
+                    await rest.put(
+                        Routes.applicationCommands(client.user.id),
+                        { body: [{
+                            name: 'simulate',
+                            description: 'Simula un evento de Twitch, Kick o YouTube',
+                            options: [{
+                                name: 'tipo',
+                                type: 3, // STRING
+                                description: 'Tipo de simulación',
+                                required: true,
+                                choices: [
+                                    { name: 'Twitch', value: 'twitch' },
+                                    { name: 'Kick', value: 'kick' },
+                                    { name: 'YouTube', value: 'youtube' }
+                                ]
+                            }]
+                        }] }
+                    );
+                    console.log('Comando /simulate registrado en modo test ✅');
+                } catch (err) {
+                    console.error(err);
+                }
+            })();
+
+            client.on('interactionCreate', async (interaction) => {
+                if (!interaction.isChatInputCommand()) return;
+                if (interaction.commandName === 'simulate') {
+                    const tipo = interaction.options.getString('tipo');
+
+                    if (tipo === 'twitch') {
+                        await testChannel.send({
+                            content: `<@&${MENTION_ROLE_ID}>`,
+                            embeds: [twitchEmbed('TwitchUserTest', 'Stream de prueba', 'https://twitch.tv/TwitchUserTest', 'https://placekitten.com/320/180')],
+                            allowedMentions: { roles: [MENTION_ROLE_ID] }
+                        });
+                    } else if (tipo === 'kick') {
+                        await testChannel.send({
+                            content: `<@&${MENTION_ROLE_ID}>`,
+                            embeds: [kickEmbed('KickUserTest', 'Stream de prueba', 'https://kick.com/KickUserTest')],
+                            allowedMentions: { roles: [MENTION_ROLE_ID] }
+                        });
+                    } else if (tipo === 'youtube') {
+                        await testChannel.send({
+                            content: `<@&${MENTION_ROLE_ID}>`,
+                            embeds: [youtubeEmbed('YouTubeUserTest', 'Video de prueba', 'https://www.youtube.com/watch?v=dQw4w9WgXcQ', 'https://placekitten.com/320/180')],
+                            allowedMentions: { roles: [MENTION_ROLE_ID] }
+                        });
+                    }
+
+                    await interaction.reply({ content: `Simulación de ${tipo} enviada ✅`, ephemeral: true });
+                }
+            });
+        }
+    }
 });
 
 client.login(process.env.TOKEN);
