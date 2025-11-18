@@ -1,36 +1,26 @@
-require('dotenv').config();
-const { REST, Routes } = require('discord.js');
-const fs = require('fs');
-const path = require('path');
+import 'dotenv/config';
+import { REST, Routes, SlashCommandBuilder } from 'discord.js';
 
-// ------------------ LEER COMANDOS ------------------
-const commands = [];
-const commandsPath = path.join(__dirname, '../commands');
-const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
+const { DISCORD_TOKEN, CLIENT_ID, GUILD_ID } = process.env;
 
-for (const file of commandFiles) {
-    const command = require(path.join(commandsPath, file));
-    commands.push(command.data.toJSON());
-}
+const commands = [
+  new SlashCommandBuilder()
+    .setName('test_stream')
+    .setDescription('Envía un embed de prueba de stream')
+    .toJSON()
+];
 
-// ------------------ CONFIGURAR REST ------------------
-const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
+const rest = new REST({ version: '10' }).setToken(DISCORD_TOKEN);
 
-// ------------------ DEPLOY ------------------
 (async () => {
-    try {
-        console.log('🔄 Registrando comandos de slash en Discord...');
-
-        await rest.put(
-            Routes.applicationGuildCommands(
-                process.env.CLIENT_ID,
-                process.env.GUILD_ID
-            ),
-            { body: commands }
-        );
-
-        console.log('✅ Comandos registrados correctamente!');
-    } catch (error) {
-        console.error('❌ Error registrando comandos:', error);
-    }
+  try {
+    console.log('[deploy] Registrando comandos...');
+    await rest.put(
+      Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID),
+      { body: commands }
+    );
+    console.log('[deploy] Comando /test_stream registrado correctamente.');
+  } catch (err) {
+    console.error('[deploy:error]', err);
+  }
 })();
