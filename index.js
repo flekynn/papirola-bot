@@ -80,18 +80,17 @@ client.on('interactionCreate', async (interaction) => {
   if (interaction.commandName === 'force_check') {
     try {
       await interaction.deferReply();
-      const events = await checkAllPlatforms({ skipCache: false });
-      if (events.length === 0) {
-        await interaction.editReply('✅ No hay novedades en Twitch, YouTube ni Kick.');
-      } else {
-        await interaction.editReply('🔍 Resultados:');
-        for (const evt of events) {
-          await interaction.followUp({
-            content: `<@&${MENTION_ROLE_ID}>`,
-            embeds: [evt]
-          });
-        }
-      }
+    const events = await checkAllPlatforms({ skipCache: false });
+    if (events.length === 0) {
+      await interaction.editReply('✅ No hay novedades en Twitch, YouTube ni Kick.');
+    } else {
+      // Mandamos todos los embeds juntos en un array
+      await interaction.editReply({
+        content: `<@&${MENTION_ROLE_ID}>`,
+        embeds: events
+      });
+    }
+
     } catch (err) {
       console.error('[force_check:error]', err);
       // ❌ Igual que arriba, no respondemos de nuevo en el catch
