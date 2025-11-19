@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { Client, GatewayIntentBits } from 'discord.js';
 import { getTwitchEmbed } from './modules/twitchEmbed.js';
 import { getKickEmbed } from './modules/kickEmbed.js';
