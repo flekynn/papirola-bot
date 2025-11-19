@@ -7,11 +7,19 @@ dotenv.config();
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 client.commands = new Collection();
 
-// Cargar comandos desde la carpeta ./commands
+// Cargar comandos desde ./commands
 const commandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('.js'));
+
 for (const file of commandFiles) {
-  const command = await import(`./commands/${file}`);
-  client.commands.set(command.data.name, command);
+  const commandModule = await import(`./commands/${file}`);
+  const { data, execute } = commandModule;
+
+  if (!data || !execute) {
+    console.warn(`[discord] ⚠️ El comando ${file} no exporta { data, execute } correctamente`);
+    continue;
+  }
+
+  client.commands.set(data.name, { data, execute });
 }
 
 // Evento de conexión
