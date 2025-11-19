@@ -5,11 +5,11 @@ export const data = new SlashCommandBuilder()
   .setName('force_check')
   .setDescription('Fuerza un chequeo en todas las plataformas');
 
-export async function execute(interaction, client) {
+export async function execute(interaction) {
   try {
     await interaction.deferReply();
     const { twitchEmbed, kickEmbed, youtubeEmbed } = await checkAllPlatforms({ skipCache: true });
-    const channel = await client.channels.fetch(process.env.TEST_CHANNEL_ID);
+    const channel = await interaction.client.channels.fetch(process.env.TEST_CHANNEL_ID);
 
     if (!twitchEmbed && !kickEmbed && !youtubeEmbed) {
       await interaction.editReply('✅ No hay novedades en Twitch, YouTube ni Kick.');

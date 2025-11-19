@@ -15,7 +15,7 @@ export const data = new SlashCommandBuilder()
       )
   );
 
-export async function execute(interaction, client) {
+export async function execute(interaction) {
   try {
     await interaction.deferReply();
     const plataforma = interaction.options.getString('plataforma');
@@ -30,7 +30,7 @@ export async function execute(interaction, client) {
       await interaction.editReply('⚠️ No se encontró contenido en esta plataforma.');
     } else {
       await interaction.editReply('✅ Stream detectado, enviando al canal...');
-      const channel = await client.channels.fetch(process.env.TEST_CHANNEL_ID);
+      const channel = await interaction.client.channels.fetch(process.env.TEST_CHANNEL_ID);
       await channel.send({ content: `<@&${process.env.MENTION_ROLE_ID}>`, embeds: [embed] });
     }
   } catch (err) {
