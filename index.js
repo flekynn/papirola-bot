@@ -42,8 +42,11 @@ client.on('interactionCreate', async (interaction) => {
     await command.execute(interaction, client);
   } catch (err) {
     console.error(`[${interaction.commandName}:error]`, err);
-    if (!interaction.replied && !interaction.deferred) {
-      await interaction.reply({ content: '❌ Hubo un error al ejecutar el comando.', ephemeral: true });
+    // Manejo seguro de errores
+    if (interaction.deferred) {
+      await interaction.editReply('❌ Hubo un error al ejecutar el comando.');
+    } else if (!interaction.replied) {
+      await interaction.reply({ content: '❌ Hubo un error al ejecutar el comando.', flags: 64 });
     }
   }
 });

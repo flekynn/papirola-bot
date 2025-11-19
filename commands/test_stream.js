@@ -21,21 +21,28 @@ export default {
     ],
   },
   async execute(interaction, client) {
-    await interaction.deferReply();
+    try {
+      await interaction.deferReply();
 
-    const plataforma = interaction.options.getString('plataforma');
-    let embed;
+      const plataforma = interaction.options.getString('plataforma');
+      let embed;
 
-    if (plataforma === 'twitch') embed = await getTwitchEmbed({ skipCache: true });
-    if (plataforma === 'kick') embed = await getKickEmbed({ skipCache: true });
-    if (plataforma === 'youtube') embed = await getYoutubeEmbed({ skipCache: true });
+      if (plataforma === 'twitch') embed = await getTwitchEmbed({ skipCache: true });
+      if (plataforma === 'kick') embed = await getKickEmbed({ skipCache: true });
+      if (plataforma === 'youtube') embed = await getYoutubeEmbed({ skipCache: true });
 
-    if (!embed) {
-      await interaction.editReply('⚠️ No se encontró contenido en esta plataforma.');
-    } else {
-      await interaction.editReply('✅ Stream detectado, enviando al canal...');
-      const channel = await client.channels.fetch(process.env.TEST_CHANNEL_ID);
-      await channel.send({ content: `<@&${process.env.MENTION_ROLE_ID}>`, embeds: [embed] });
+      if (!embed) {
+        await interaction.editReply('⚠️ No se encontró contenido en esta plataforma.');
+      } else {
+        await interaction.editReply('✅ Stream detectado, enviando al canal...');
+        const channel = await client.channels.fetch(process.env.TEST_CHANNEL_ID);
+        await channel.send({ content: `<@&${process.env.MENTION_ROLE_ID}>`, embeds: [embed] });
+      }
+    } catch (err) {
+      console.error('[test_stream:error]', err);
+      if (interaction.deferred) {
+        await interaction.editReply('❌ Error al ejecutar test_stream.');
+      }
     }
   },
 };
