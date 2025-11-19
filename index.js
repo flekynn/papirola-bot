@@ -46,24 +46,20 @@ client.once('ready', () => {
   }, Number(YOUTUBE_INTERVAL_MS));
 });
 
-// Slash command handler
 client.on('interactionCreate', async (interaction) => {
   if (!interaction.isChatInputCommand()) return;
 
+  // Comando test_stream
   if (interaction.commandName === 'test_stream') {
-    const plataforma = interaction.options.getString('plataforma');
-    let embed;
-
     try {
       await interaction.deferReply();
 
-      if (plataforma === 'twitch') {
-        embed = await getTwitchEmbed({ skipCache: true });
-      } else if (plataforma === 'kick') {
-        embed = await getKickEmbed({ skipCache: true });
-      } else if (plataforma === 'youtube') {
-        embed = await getYoutubeEmbed({ skipCache: true });
-      }
+      let embed;
+      const plataforma = interaction.options.getString('plataforma');
+
+      if (plataforma === 'twitch') embed = await getTwitchEmbed({ skipCache: true });
+      if (plataforma === 'kick') embed = await getKickEmbed({ skipCache: true });
+      if (plataforma === 'youtube') embed = await getYoutubeEmbed({ skipCache: true });
 
       if (!embed) {
         await interaction.editReply('⚠️ No se encontró contenido en esta plataforma.');
@@ -75,10 +71,10 @@ client.on('interactionCreate', async (interaction) => {
       }
     } catch (err) {
       console.error('[test_stream:error]', err);
-      // No respondemos de nuevo para evitar "Interaction already acknowledged"
     }
   }
 
+  // Comando force_check
   if (interaction.commandName === 'force_check') {
     try {
       await interaction.deferReply();
