@@ -1,4 +1,5 @@
 import fs from 'fs/promises';
+import { EmbedBuilder } from 'discord.js';
 
 const { TWITCH_CLIENT_ID, TWITCH_CLIENT_SECRET, TWITCH_USERNAME } = process.env;
 const CACHE_FILE = './twitchCache.json';
@@ -87,4 +88,25 @@ export async function getTwitchData({ skipCache = false } = {}) {
     console.error('[twitchData:error]', err);
     return null;
   }
+}
+
+export function buildTwitchEmbed(username, title, url, thumbnail, gameName, viewers, publishedAt) {
+  const embed = new EmbedBuilder()
+    .setTitle(title)
+    .setURL(url)
+    .setImage(thumbnail)
+    .setColor('#9146FF') // color oficial de Twitch
+    .setAuthor({ name: username });
+
+  if (gameName) {
+    embed.addFields({ name: 'Juego', value: gameName, inline: true });
+  }
+
+  if (viewers !== null) {
+    embed.setDescription(`🔴 En vivo con ${viewers} espectadores`);
+  } else if (publishedAt) {
+    embed.setDescription(`Último stream: ${new Date(publishedAt).toLocaleString()}`);
+  }
+
+  return embed;
 }

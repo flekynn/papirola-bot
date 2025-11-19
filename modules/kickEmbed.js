@@ -4,6 +4,8 @@ const {
   KICK_USERNAME
 } = process.env;
 
+import { EmbedBuilder } from 'discord.js';
+
 let accessToken = null;
 let lastStreamId = null;
 
@@ -67,4 +69,22 @@ export async function getKickData({ skipCache = false } = {}) {
     console.error('[kickData:error]', err);
     return null;
   }
+}
+
+export function buildKickEmbed(username, title, url, thumbnail, category, viewers, publishedAt) {
+  const embed = new EmbedBuilder()
+    .setTitle(title)
+    .setURL(url)
+    .setColor('#00FF00')
+    .setAuthor({ name: username })
+    .setImage(thumbnail || 'https://kick.com/assets/images/kick-logo.png')
+    .setFooter({ text: category ? `Categoría: ${category}` : 'Kick Stream' });
+
+  if (viewers !== null) {
+    embed.setDescription(`🔴 En vivo con ${viewers} espectadores`);
+  } else if (publishedAt) {
+    embed.setDescription(`Último stream: ${new Date(publishedAt).toLocaleString()}`);
+  }
+
+  return embed;
 }

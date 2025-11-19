@@ -1,4 +1,5 @@
 import fs from 'fs/promises';
+import { EmbedBuilder } from 'discord.js';
 
 const { YOUTUBE_API_KEY, YOUTUBE_CHANNEL_ID } = process.env;
 const CACHE_FILE = './youtubeCache.json';
@@ -60,3 +61,14 @@ export async function getYoutubeData({ skipCache = false } = {}) {
     console.error('[youtubeData:error]', err);
     return null;
   }
+}
+
+export function buildYoutubeEmbed(username, title, url, thumbnail, publishedAt) {
+  return new EmbedBuilder()
+    .setTitle(title)
+    .setURL(url)
+    .setImage(thumbnail)
+    .setColor('#FF0000')
+    .setAuthor({ name: username })
+    .setFooter({ text: `Publicado: ${new Date(publishedAt).toLocaleString()}` });
+}
