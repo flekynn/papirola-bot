@@ -24,7 +24,7 @@ for (const file of commandFiles) {
 }
 
 // Evento de conexión (correcto)
-client.once('ready', () => {
+client.once('clientReady', () => {
   console.log(`[discord] ✅ Bot conectado como ${client.user.tag}`);
 });
 
