@@ -1,6 +1,4 @@
-import { getTwitchEmbed } from '../modules/twitchEmbed.js';
-import { getKickEmbed } from '../modules/kickEmbed.js';
-import { getYoutubeEmbed } from '../modules/youtubeEmbed.js';
+import { checkAllPlatforms } from '../modules/notifier.js';
 
 export default {
   data: {
@@ -10,7 +8,7 @@ export default {
       {
         name: 'plataforma',
         description: 'Plataforma a consultar',
-        type: 3, // STRING
+        type: 3,
         required: true,
         choices: [
           { name: 'twitch', value: 'twitch' },
@@ -25,11 +23,12 @@ export default {
       await interaction.deferReply();
 
       const plataforma = interaction.options.getString('plataforma');
-      let embed;
+      const { twitchEmbed, kickEmbed, youtubeEmbed } = await checkAllPlatforms({ skipCache: true });
 
-      if (plataforma === 'twitch') embed = await getTwitchEmbed({ skipCache: true });
-      if (plataforma === 'kick') embed = await getKickEmbed({ skipCache: true });
-      if (plataforma === 'youtube') embed = await getYoutubeEmbed({ skipCache: true });
+      const embed =
+        plataforma === 'twitch' ? twitchEmbed :
+        plataforma === 'kick' ? kickEmbed :
+        plataforma === 'youtube' ? youtubeEmbed : null;
 
       if (!embed) {
         await interaction.editReply('⚠️ No se encontró contenido en esta plataforma.');

@@ -3,16 +3,16 @@ import { Client, GatewayIntentBits, Collection } from 'discord.js';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { startNotifier, checkAllPlatforms } from './modules/notifier.js';
 
-const { DISCORD_TOKEN, TEST_CHANNEL_ID } = process.env;
+const { DISCORD_TOKEN } = process.env;
 
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 client.commands = new Collection();
 
-// Cargar comandos desde la carpeta /commands
+// Cargar comandos
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
 const commandsPath = path.join(__dirname, 'commands');
 const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
 
@@ -23,13 +23,8 @@ for (const file of commandFiles) {
 }
 
 client.once('clientReady', async () => {
-  console.log(`[clientReady] Conectado como ${client.user.tag}`);
-  try {
-    const channel = await client.channels.fetch(TEST_CHANNEL_ID);
-    await channel.send('Bot iniciado en canal de pruebas.');
-  } catch (err) {
-    console.error('[startup:error]', err);
-  }
+  console.log(`[clientReady] ✅ Conectado como ${client.user.tag}`);
+  startNotifier(client); // activa chequeo automático
 });
 
 client.on('interactionCreate', async (interaction) => {
@@ -42,7 +37,6 @@ client.on('interactionCreate', async (interaction) => {
     await command.execute(interaction, client);
   } catch (err) {
     console.error(`[${interaction.commandName}:error]`, err);
-    // Manejo seguro de errores
     if (interaction.deferred) {
       await interaction.editReply('❌ Hubo un error al ejecutar el comando.');
     } else if (!interaction.replied) {
