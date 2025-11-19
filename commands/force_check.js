@@ -8,7 +8,7 @@ export const data = new SlashCommandBuilder()
 export async function execute(interaction) {
   try {
     await interaction.deferReply();
-    const { twitchEmbed, kickEmbed, youtubeEmbed } = await checkAllPlatforms({ skipCache: true });
+    const { twitchEmbed, kickEmbed, youtubeEmbed } = await checkAllPlatforms();
     const channel = await interaction.client.channels.fetch(process.env.TEST_CHANNEL_ID);
 
     if (!twitchEmbed && !kickEmbed && !youtubeEmbed) {

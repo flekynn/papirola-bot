@@ -19,7 +19,7 @@ export async function execute(interaction) {
   try {
     await interaction.deferReply();
     const plataforma = interaction.options.getString('plataforma');
-    const { twitchEmbed, kickEmbed, youtubeEmbed } = await checkAllPlatforms({ skipCache: true });
+    const { twitchEmbed, kickEmbed, youtubeEmbed } = await checkAllPlatforms();
 
     const embed =
       plataforma === 'twitch' ? twitchEmbed :
