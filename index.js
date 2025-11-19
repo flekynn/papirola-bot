@@ -1,49 +1,51 @@
-import 'dotenv/config';
-import {
-  Client,
-  GatewayIntentBits,
-  Partials
-} from 'discord.js';
-import { checkAllPlatforms } from './modules/checkAllPlatforms.js';
-import { getTwitchEmbed } from './modules/twitchEmbed.js';
-import { getKickEmbed } from './modules/kickEmbed.js';
-import { getYoutubeEmbed } from './modules/youtubeEmbed.js';
+import { Client, GatewayIntentBits } from 'discord.js';
+import { getTwitchEmbed } from './twitchEmbed.js';
+import { getKickEmbed } from './kickEmbed.js';
+import { getYoutubeEmbed } from './youtubeEmbed.js';
 
 const {
   DISCORD_TOKEN,
   TEST_CHANNEL_ID,
-  CHECK_INTERVAL_MS = '60000',
-  MENTION_ROLE_ID
+  MENTION_ROLE_ID,
+  TWITCH_INTERVAL_MS,
+  KICK_INTERVAL_MS,
+  YOUTUBE_INTERVAL_MS,
 } = process.env;
 
-const client = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent
-  ],
-  partials: [Partials.Channel]
-});
+const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
-// ⚠️ Cambiado a clientReady para evitar el warning
-client.once('clientReady', async () => {
+client.once('ready', () => {
   console.log(`[clientReady] Conectado como ${client.user.tag}`);
-  const channel = await client.channels.fetch(TEST_CHANNEL_ID).catch(() => null);
-  if (!channel || !channel.isTextBased()) {
-    console.error('[fatal] Canal de pruebas inválido');
-    process.exit(1);
-  }
 
-  await channel.send('🧪 Bot iniciado en canal de pruebas.');
+  // Twitch poll
+  setInterval(async () => {
+    const twitchEmbed = await getTwitchEmbed();
+    if (twitchEmbed) {
+      const channel = await client.channels.fetch(TEST_CHANNEL_ID);
+      await channel.send({ content: `<@&${MENTION_ROLE_ID}>`, embeds: [twitchEmbed] });
+    }
+  }, Number(TWITCH_INTERVAL_MS));
 
-  // Precargar cache sin anunciar
-  await getTwitchEmbed({ skipCache: true });
-  await getYoutubeEmbed({ skipCache: true });
-  await getKickEmbed({ skipCache: true });
+  // Kick poll
+  setInterval(async () => {
+    const kickEmbed = await getKickEmbed();
+    if (kickEmbed) {
+      const channel = await client.channels.fetch(TEST_CHANNEL_ID);
+      await channel.send({ content: `<@&${MENTION_ROLE_ID}>`, embeds: [kickEmbed] });
+    }
+  }, Number(KICK_INTERVAL_MS));
 
-  startPolling(channel);
+  // YouTube poll
+  setInterval(async () => {
+    const youtubeEmbed = await getYoutubeEmbed();
+    if (youtubeEmbed) {
+      const channel = await client.channels.fetch(TEST_CHANNEL_ID);
+      await channel.send({ content: `<@&${MENTION_ROLE_ID}>`, embeds: [youtubeEmbed] });
+    }
+  }, Number(YOUTUBE_INTERVAL_MS));
 });
 
+// Slash command handler
 client.on('interactionCreate', async (interaction) => {
   if (!interaction.isChatInputCommand()) return;
 
@@ -52,7 +54,6 @@ client.on('interactionCreate', async (interaction) => {
     let embed;
 
     try {
-      // deferReply solo una vez
       await interaction.deferReply();
 
       if (plataforma === 'twitch') {
@@ -64,57 +65,41 @@ client.on('interactionCreate', async (interaction) => {
       }
 
       if (!embed) {
-        return await interaction.editReply('⚠️ No se encontró contenido en esta plataforma.');
+        await interaction.editReply('⚠️ No se encontró contenido en esta plataforma.');
+      } else {
+        await interaction.editReply({
+          content: `<@&${MENTION_ROLE_ID}>`,
+          embeds: [embed],
+        });
       }
-
-      await interaction.editReply({
-        content: `<@&${MENTION_ROLE_ID}>`,
-        embeds: [embed]
-      });
     } catch (err) {
       console.error('[test_stream:error]', err);
-      // ❌ No intentamos responder de nuevo aquí, solo logueamos
+      // No respondemos de nuevo para evitar "Interaction already acknowledged"
     }
   }
 
   if (interaction.commandName === 'force_check') {
     try {
       await interaction.deferReply();
-    const events = await checkAllPlatforms({ skipCache: false });
-    if (events.length === 0) {
-      await interaction.editReply('✅ No hay novedades en Twitch, YouTube ni Kick.');
-    } else {
-      // Mandamos todos los embeds juntos en un array
-      await interaction.editReply({
-        content: `<@&${MENTION_ROLE_ID}>`,
-        embeds: events
-      });
-    }
 
+      const twitchEmbed = await getTwitchEmbed({ skipCache: true });
+      const kickEmbed = await getKickEmbed({ skipCache: true });
+      const youtubeEmbed = await getYoutubeEmbed({ skipCache: true });
+
+      const channel = await client.channels.fetch(TEST_CHANNEL_ID);
+
+      if (!twitchEmbed && !kickEmbed && !youtubeEmbed) {
+        await interaction.editReply('✅ No hay novedades en Twitch, YouTube ni Kick.');
+      } else {
+        await interaction.editReply('🔍 Resultados:');
+        if (twitchEmbed) await channel.send({ content: `<@&${MENTION_ROLE_ID}>`, embeds: [twitchEmbed] });
+        if (kickEmbed) await channel.send({ content: `<@&${MENTION_ROLE_ID}>`, embeds: [kickEmbed] });
+        if (youtubeEmbed) await channel.send({ content: `<@&${MENTION_ROLE_ID}>`, embeds: [youtubeEmbed] });
+      }
     } catch (err) {
       console.error('[force_check:error]', err);
-      // ❌ Igual que arriba, no respondemos de nuevo en el catch
     }
   }
 });
-
-function startPolling(channel) {
-  const interval = Number(CHECK_INTERVAL_MS);
-  console.log(`[poll] Intervalo: ${interval}ms`);
-
-  setInterval(async () => {
-    try {
-      const events = await checkAllPlatforms({ skipCache: false });
-      for (const evt of events) {
-        await channel.send({
-          content: `<@&${MENTION_ROLE_ID}>`,
-          embeds: [evt]
-        });
-      }
-    } catch (err) {
-      console.error('[poll:error]', err);
-    }
-  }, interval);
-}
 
 client.login(DISCORD_TOKEN);
