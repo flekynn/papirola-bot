@@ -4,13 +4,25 @@ import { EmbedBuilder } from 'discord.js';
 const { YOUTUBE_API_KEY, YOUTUBE_CHANNEL_ID } = process.env;
 
 let lastVideoId = null;
+let quotaBlocked = false;
 
 export async function getYoutubeEmbed({ skipCache = false } = {}) {
+  if (quotaBlocked) {
+    console.log('[youtubeEmbed] Chequeo bloqueado por cuota excedida.');
+    return null;
+  }
+
   const url = `https://www.googleapis.com/youtube/v3/search?key=${YOUTUBE_API_KEY}&channelId=${YOUTUBE_CHANNEL_ID}&part=snippet,id&order=date&maxResults=1`;
 
   try {
     const res = await fetch(url);
     const data = await res.json();
+
+    if (data.error?.errors?.[0]?.reason === 'quotaExceeded') {
+      console.log('[youtubeEmbed] Cuota excedida, bloqueando chequeos.');
+      quotaBlocked = true;
+      return null;
+    }
 
     console.log('[youtubeEmbed] API response:', JSON.stringify(data, null, 2));
 
