@@ -19,7 +19,9 @@ export async function execute(interaction) {
   try {
     await interaction.deferReply();
     const plataforma = interaction.options.getString('plataforma');
-    const { twitchEmbed, kickEmbed, youtubeEmbed } = await checkAllPlatforms();
+
+    // ✅ Forzar chequeo sin cache
+    const { twitchEmbed, kickEmbed, youtubeEmbed } = await checkAllPlatforms({ skipCache: true });
 
     const embed =
       plataforma === 'twitch' ? twitchEmbed :
