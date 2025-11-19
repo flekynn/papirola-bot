@@ -1,3 +1,4 @@
+// modules/twitchEmbed.js
 import fs from 'fs/promises';
 import { EmbedBuilder } from 'discord.js';
 
@@ -148,6 +149,8 @@ export function buildTwitchEmbed(username, title, url, thumbnail, gameName, view
     embed.setDescription(`🔴 En vivo con ${viewers} espectadores`);
   } else if (publishedAt) {
     embed.setDescription(`Último stream: ${new Date(publishedAt).toLocaleString()}`);
+  } else {
+    embed.setDescription('Stream finalizado');
   }
 
   return embed;

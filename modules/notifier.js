@@ -1,7 +1,10 @@
+// modules/notifier.js
 import { getTwitchData } from './twitchEmbed.js';
 import { getKickData } from './kickEmbed.js';
 import { getYoutubeData } from './youtubeEmbed.js';
-import { buildTwitchEmbed, buildKickEmbed, buildYoutubeEmbed } from './messages.js';
+import { buildTwitchEmbed } from './twitchEmbed.js';
+import { buildKickEmbed } from './kickEmbed.js';
+import { buildYoutubeEmbed } from './youtubeEmbed.js';
 
 const {
   STREAM_CHANNEL_ID,
@@ -23,7 +26,8 @@ export async function checkAllPlatforms({ skipCache = false } = {}) {
     twitchData.url,
     twitchData.thumbnail,
     twitchData.gameName,
-    twitchData.viewers
+    twitchData.viewers,
+    twitchData.publishedAt
   ) : null;
 
   const kickEmbed = kickData ? buildKickEmbed(
@@ -32,7 +36,8 @@ export async function checkAllPlatforms({ skipCache = false } = {}) {
     kickData.url,
     kickData.thumbnail,
     kickData.category,
-    kickData.viewers
+    kickData.viewers,
+    kickData.publishedAt
   ) : null;
 
   const youtubeEmbed = youtubeData ? buildYoutubeEmbed(

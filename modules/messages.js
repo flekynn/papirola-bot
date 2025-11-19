@@ -1,3 +1,4 @@
+// modules/messages.js
 import { EmbedBuilder } from 'discord.js';
 
 export function buildTwitchEmbed(username, title, url, thumbnail, gameName, viewers) {

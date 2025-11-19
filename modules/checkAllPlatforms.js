@@ -1,111 +1,63 @@
 // modules/checkAllPlatforms.js
+import { getTwitchData } from './twitchEmbed.js';
+import { getKickData } from './kickEmbed.js';
+import { getYoutubeData } from './youtubeEmbed.js';
 import { buildTwitchEmbed } from './twitchEmbed.js';
 import { buildKickEmbed } from './kickEmbed.js';
 import { buildYoutubeEmbed } from './youtubeEmbed.js';
 
-// Variables persistentes a nivel de módulo
-let twitchToken = null;
-let twitchTokenExpiry = 0;
-let kickToken = null;
-let kickTokenExpiry = 0;
-let youtubeToken = null;
-let youtubeTokenExpiry = 0;
-
-// Helper para Twitch
-async function getTwitchToken() {
-  const now = Date.now();
-  if (twitchToken && now < twitchTokenExpiry) {
-    console.log('[twitch:auth] 🟢 Token vigente, usando cache');
-    return twitchToken;
-  }
-
-  console.log('[twitch:auth] 🔄 Renovando token de Twitch...');
-  const response = await fetch('https://id.twitch.tv/oauth2/token', {
-    method: 'POST',
-    body: new URLSearchParams({
-      client_id: process.env.TWITCH_CLIENT_ID,
-      client_secret: process.env.TWITCH_CLIENT_SECRET,
-      grant_type: 'client_credentials',
-    }),
-  });
-  const data = await response.json();
-
-  console.log('[twitch:auth] expires_in recibido:', data.expires_in);
-
-  twitchToken = data.access_token;
-  twitchTokenExpiry = now + (data.expires_in || 3600) * 1000; // fallback 1h
-  console.log('[twitch:auth] ✅ Token renovado correctamente');
-  return twitchToken;
-}
-
-// Helper para Kick (⚠️ revisar endpoint oficial)
-async function getKickToken() {
-  const now = Date.now();
-  if (kickToken && now < kickTokenExpiry) {
-    console.log('[kick:auth] 🟢 Token vigente, usando cache');
-    return kickToken;
-  }
-
-  console.log('[kick:auth] 🔄 Renovando token de Kick...');
-  const response = await fetch('https://kick.com/oauth/token', {
-    method: 'POST',
-    body: new URLSearchParams({
-      client_id: process.env.KICK_CLIENT_ID,
-      client_secret: process.env.KICK_CLIENT_SECRET,
-      grant_type: 'client_credentials',
-    }),
-  });
-  const data = await response.json();
-
-  console.log('[kick:auth] expires_in recibido:', data.expires_in);
-
-  kickToken = data.access_token;
-  kickTokenExpiry = now + (data.expires_in || 3600) * 1000; // fallback 1h
-  console.log('[kick:auth] ✅ Token renovado correctamente');
-  return kickToken;
-}
-
-// Helper para YouTube (⚠️ usar API Key o OAuth real)
-async function getYoutubeToken() {
-  const now = Date.now();
-  if (youtubeToken && now < youtubeTokenExpiry) {
-    console.log('[youtube:auth] 🟢 Token vigente, usando cache');
-    return youtubeToken;
-  }
-
-  console.log('[youtube:auth] 🔄 Renovando token de YouTube...');
-  const response = await fetch('https://oauth2.googleapis.com/token', {
-    method: 'POST',
-    body: new URLSearchParams({
-      client_id: process.env.YOUTUBE_CLIENT_ID,
-      client_secret: process.env.YOUTUBE_CLIENT_SECRET,
-      grant_type: 'client_credentials',
-    }),
-  });
-  const data = await response.json();
-
-  console.log('[youtube:auth] expires_in recibido:', data.expires_in);
-
-  youtubeToken = data.access_token;
-  youtubeTokenExpiry = now + (data.expires_in || 3600) * 1000; // fallback 1h
-  console.log('[youtube:auth] ✅ Token renovado correctamente');
-  return youtubeToken;
-}
-
-// Función principal
-export async function checkAllPlatforms() {
+export async function checkAllPlatforms({ skipCache = false } = {}) {
   try {
-    const twitchToken = await getTwitchToken();
-    const kickToken = await getKickToken();
-    const youtubeToken = await getYoutubeToken();
+    console.log('[checkAllPlatforms] Iniciando chequeo en todas las plataformas...');
 
-    const twitchEmbed = await buildTwitchEmbed(twitchToken);
-    const kickEmbed = await buildKickEmbed(kickToken);
-    const youtubeEmbed = await buildYoutubeEmbed(youtubeToken);
+    const twitchData = await getTwitchData({ skipCache });
+    const kickData = await getKickData({ skipCache });
+    const youtubeData = await getYoutubeData({ skipCache });
+
+    console.log('[checkAllPlatforms] twitchData:', twitchData);
+    console.log('[checkAllPlatforms] kickData:', kickData);
+    console.log('[checkAllPlatforms] youtubeData:', youtubeData);
+
+    const twitchEmbed =
+      twitchData
+        ? buildTwitchEmbed(
+            twitchData.username,
+            twitchData.title,
+            twitchData.url,
+            twitchData.thumbnail,
+            twitchData.gameName,
+            twitchData.viewers,
+            twitchData.publishedAt
+          )
+        : null;
+
+    const kickEmbed =
+      kickData
+        ? buildKickEmbed(
+            kickData.username,
+            kickData.title,
+            kickData.url,
+            kickData.thumbnail,
+            kickData.category,
+            kickData.viewers,
+            kickData.publishedAt
+          )
+        : null;
+
+    const youtubeEmbed =
+      youtubeData
+        ? buildYoutubeEmbed(
+            youtubeData.username,
+            youtubeData.title,
+            youtubeData.url,
+            youtubeData.thumbnail,
+            youtubeData.publishedAt
+          )
+        : null;
 
     return { twitchEmbed, kickEmbed, youtubeEmbed };
   } catch (err) {
-    console.error('[notifier:error]', err);
+    console.error('[checkAllPlatforms:error]', err);
     return { twitchEmbed: null, kickEmbed: null, youtubeEmbed: null };
   }
 }

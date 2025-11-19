@@ -1,3 +1,4 @@
+// modules/kickEmbed.js
 const { KICK_USERNAME } = process.env;
 import { EmbedBuilder } from 'discord.js';
 
