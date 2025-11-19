@@ -1,0 +1,4 @@
+﻿{
+  "startCommand": "node index.js",
+  "healthCheckPath": null
+}
