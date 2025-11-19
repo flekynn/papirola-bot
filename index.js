@@ -1,59 +1,46 @@
-import 'dotenv/config';
 import { Client, GatewayIntentBits, Collection } from 'discord.js';
+import dotenv from 'dotenv';
 import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import { startNotifier } from './modules/notifier.js';
 
-const { DISCORD_TOKEN } = process.env;
+dotenv.config();
 
-const client = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent,
-    GatewayIntentBits.GuildMembers
-  ]
-});
+const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 client.commands = new Collection();
 
-// Cargar comandos
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const commandsPath = path.join(__dirname, 'commands');
-const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
-
+// Cargar comandos desde la carpeta ./commands
+const commandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('.js'));
 for (const file of commandFiles) {
-  const filePath = path.join(commandsPath, file);
-  const command = await import(`file://${filePath}`);
-  client.commands.set(command.default.data.name, command.default);
+  const command = await import(`./commands/${file}`);
+  client.commands.set(command.data.name, command);
 }
 
+// Evento de conexión
 client.once('clientReady', () => {
   console.log(`[discord] ✅ Bot conectado como ${client.user.tag}`);
 });
 
-client.on('error', (err) => {
-  console.error('[discord:error]', err);
-});
-
-client.on('shardDisconnect', (event, id) => {
-  console.warn(`[discord] ⚠️ Shard ${id} desconectado`, event);
-});
+// Manejo de interacciones
+client.on('interactionCreate', async interaction => {
+  if (!interaction.isCommand()) return;
 
   const command = client.commands.get(interaction.commandName);
-  if (!command) return;
+  if (!command) {
+    console.warn(`[discord] ⚠️ Comando no encontrado: ${interaction.commandName}`);
+    return;
+  }
 
   try {
-    await command.execute(interaction, client);
-  } catch (err) {
-    console.error(`[${interaction.commandName}:error]`, err);
-    if (interaction.deferred || interaction.replied) {
-      await interaction.editReply('❌ Hubo un error al ejecutar el comando.');
+    await command.execute(interaction);
+    console.log(`[discord] ▶️ Ejecutado comando: ${interaction.commandName}`);
+  } catch (error) {
+    console.error('[discord:error]', error);
+    if (interaction.replied || interaction.deferred) {
+      await interaction.followUp({ content: 'Hubo un error al ejecutar el comando.', ephemeral: true });
     } else {
-      await interaction.reply({ content: '❌ Hubo un error al ejecutar el comando.', flags: 64 });
+      await interaction.reply({ content: 'Hubo un error al ejecutar el comando.', ephemeral: true });
     }
   }
 });
 
-client.login(DISCORD_TOKEN);
+// Login con el token
+client.login(process.env.DISCORD_TOKEN);
