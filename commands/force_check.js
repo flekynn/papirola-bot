@@ -1,5 +1,5 @@
 import { SlashCommandBuilder } from 'discord.js';
-import { checkAllPlatforms } from '../modules/notifier.js';
+import { checkAllPlatforms } from '../modules/checkAllPlatforms.js';
 
 export const data = new SlashCommandBuilder()
   .setName('force_check')
