@@ -22,11 +22,14 @@ async function setLastVodId(id) {
 
 async function getAccessToken() {
   if (accessToken) return accessToken;
-  const res = await fetch(`https://id.twitch.tv/oauth2/token?client_id=${TWITCH_CLIENT_ID}&client_secret=${TWITCH_CLIENT_SECRET}&grant_type=client_credentials`, { method: 'POST' });
+  console.log('[twitch:auth] 🔄 Renovando token de Twitch...');
+  const res = await fetch(`https://id.twitch.tv/oauth2/token?...`, { method: 'POST' });
   const data = await res.json();
   accessToken = data.access_token;
+  console.log('[twitch:auth] ✅ Token renovado correctamente');
   return accessToken;
 }
+
 
 export async function getTwitchData({ skipCache = false } = {}) {
   try {

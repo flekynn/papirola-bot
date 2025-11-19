@@ -31,9 +31,10 @@ export async function getYoutubeData({ skipCache = false } = {}) {
     const data = await res.json();
 
     if (data.error?.errors?.[0]?.reason === 'quotaExceeded') {
-      quotaBlocked = true;
-      return null;
-    }
+  quotaBlocked = true;
+  console.warn('[youtube] ⚠️ Cuota de API excedida, bloqueando nuevas consultas');
+  return null;
+}
 
     if (!data.items || data.items.length === 0) return null;
 

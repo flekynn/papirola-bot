@@ -11,6 +11,7 @@ let lastStreamId = null;
 
 async function getKickToken() {
   if (accessToken) return accessToken;
+  console.log('[kick:auth] 🔄 Renovando token de Kick...');
 
   const res = await fetch("https://kick.com/oauth2/token", {
     method: "POST",
@@ -24,6 +25,7 @@ async function getKickToken() {
 
   const data = await res.json();
   accessToken = data.access_token;
+  console.log('[kick:auth] ✅ Token renovado correctamente');
   return accessToken;
 }
 
@@ -40,6 +42,8 @@ export async function getKickData({ skipCache = false } = {}) {
       if (!skipCache && stream.id === lastStreamId) return null;
       lastStreamId = stream.id;
 
+      console.log(`[kick] 🔴 Stream en vivo detectado: ${stream.session_title}`);
+
       return {
         username: stream.user.username,
         title: stream.session_title,
@@ -55,6 +59,8 @@ export async function getKickData({ skipCache = false } = {}) {
 
     if (!skipCache && last.id === lastStreamId) return null;
     lastStreamId = last.id;
+
+    console.log(`[kick] 📺 Último stream detectado: ${last.session_title}`);
 
     return {
       username: KICK_USERNAME,

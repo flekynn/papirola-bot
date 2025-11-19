@@ -29,13 +29,17 @@ for (const file of commandFiles) {
   client.commands.set(command.default.data.name, command.default);
 }
 
-client.once('ready', () => {
-  console.log(`✅ Conectado como ${client.user.tag}`);
-  startNotifier(client);
+client.once('clientReady', () => {
+  console.log(`[discord] ✅ Bot conectado como ${client.user.tag}`);
 });
 
-client.on('interactionCreate', async (interaction) => {
-  if (!interaction.isChatInputCommand()) return;
+client.on('error', (err) => {
+  console.error('[discord:error]', err);
+});
+
+client.on('shardDisconnect', (event, id) => {
+  console.warn(`[discord] ⚠️ Shard ${id} desconectado`, event);
+});
 
   const command = client.commands.get(interaction.commandName);
   if (!command) return;
