@@ -1,7 +1,7 @@
 import { Client, GatewayIntentBits } from 'discord.js';
-import { getTwitchEmbed } from './twitchEmbed.js';
-import { getKickEmbed } from './kickEmbed.js';
-import { getYoutubeEmbed } from './youtubeEmbed.js';
+import { getTwitchEmbed } from './modules/twitchEmbed.js';
+import { getKickEmbed } from './modules/kickEmbed.js';
+import { getYoutubeEmbed } from './modules/youtubeEmbed.js';
 
 const {
   DISCORD_TOKEN,
