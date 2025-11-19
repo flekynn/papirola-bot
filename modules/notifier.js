@@ -1,15 +1,8 @@
-// modules/notifier.js
-import { getTwitchData } from './twitchEmbed.js';
-import { getKickData } from './kickEmbed.js';
-import { getYoutubeData } from './youtubeEmbed.js';
-import { buildTwitchEmbed } from './twitchEmbed.js';
-import { buildKickEmbed } from './kickEmbed.js';
-import { buildYoutubeEmbed } from './youtubeEmbed.js';
+import { getTwitchData, buildTwitchEmbed } from './twitchEmbed.js';
+import { getKickData, buildKickEmbed } from './kickEmbed.js';
+import { getYoutubeData, buildYoutubeEmbed } from './youtubeEmbed.js';
 
-const {
-  STREAM_CHANNEL_ID,
-  MENTION_ROLE_ID
-} = process.env;
+const { STREAM_CHANNEL_ID, MENTION_ROLE_ID } = process.env;
 
 let twitchLive = false;
 let kickLive = false;
@@ -27,7 +20,9 @@ export async function checkAllPlatforms({ skipCache = false } = {}) {
     twitchData.thumbnail,
     twitchData.gameName,
     twitchData.viewers,
-    twitchData.publishedAt
+    twitchData.publishedAt,
+    twitchData.duration,
+    twitchData.enVivo
   ) : null;
 
   const kickEmbed = kickData ? buildKickEmbed(
@@ -37,7 +32,9 @@ export async function checkAllPlatforms({ skipCache = false } = {}) {
     kickData.thumbnail,
     kickData.category,
     kickData.viewers,
-    kickData.publishedAt
+    kickData.publishedAt,
+    kickData.duration,
+    kickData.enVivo
   ) : null;
 
   const youtubeEmbed = youtubeData ? buildYoutubeEmbed(
@@ -45,10 +42,12 @@ export async function checkAllPlatforms({ skipCache = false } = {}) {
     youtubeData.title,
     youtubeData.url,
     youtubeData.thumbnail,
-    youtubeData.publishedAt
+    youtubeData.publishedAt,
+    youtubeData.duration,
+    youtubeData.enVivo
   ) : null;
 
-  return { twitchEmbed, kickEmbed, youtubeEmbed };
+  return { twitchEmbed, kickEmbed, youtubeEmbed, twitchData, kickData, youtubeData };
 }
 
 export function startNotifier(client) {
@@ -56,31 +55,36 @@ export function startNotifier(client) {
     const channel = client.channels.cache.get(STREAM_CHANNEL_ID);
     if (!channel) return console.log('❌ Canal de stream no encontrado');
 
-    const { twitchEmbed, kickEmbed, youtubeEmbed } = await checkAllPlatforms();
+    const { twitchEmbed, kickEmbed, youtubeEmbed, twitchData, kickData, youtubeData } = await checkAllPlatforms();
 
     if (twitchEmbed && !twitchLive) {
-      await channel.send({ content: `<@&${MENTION_ROLE_ID}>`, embeds: [twitchEmbed] });
+      const msg = twitchData.enVivo
+        ? `🔴 **${twitchData.username} está en vivo en Twitch**\n${twitchData.url}`
+        : `📼 **${twitchData.username} hizo un directo en Twitch**\n${twitchData.url}`;
+      await channel.send({ content: `<@&${MENTION_ROLE_ID}>\n${msg}`, embeds: [twitchEmbed] });
       twitchLive = true;
     } else if (!twitchEmbed) twitchLive = false;
 
     if (kickEmbed && !kickLive) {
-      await channel.send({ content: `<@&${MENTION_ROLE_ID}>`, embeds: [kickEmbed] });
+      const msg = kickData.enVivo
+        ? `🟢 **${kickData.username} está en vivo en Kick**\n${kickData.url}`
+        : `📼 **${kickData.username} hizo un directo en Kick**\n${kickData.url}`;
+      await channel.send({ content: `<@&${MENTION_ROLE_ID}>\n${msg}`, embeds: [kickEmbed] });
       kickLive = true;
     } else if (!kickEmbed) kickLive = false;
 
     if (youtubeEmbed && !youtubeLive) {
-      await channel.send({ content: `<@&${MENTION_ROLE_ID}>`, embeds: [youtubeEmbed] });
+      const msg = `📺 **${youtubeData.username} subió un nuevo video a YouTube**\n${youtubeData.url}`;
+      await channel.send({ content: `<@&${MENTION_ROLE_ID}>\n${msg}`, embeds: [youtubeEmbed] });
       youtubeLive = true;
     } else if (!youtubeEmbed) youtubeLive = false;
   }
 
-  // 👉 Sembrar cache inicial sin enviar notificaciones
   (async () => {
     await checkAllPlatforms({ skipCache: false });
     console.log('[notifier] Cache inicial sembrado, evitando notificaciones en el arranque.');
   })();
 
-  // 👉 Intervalos fijos
   setInterval(notify, 60000);   // Twitch cada 1 min
   setInterval(notify, 60000);   // Kick cada 1 min
   setInterval(notify, 900000);  // YouTube cada 15 min

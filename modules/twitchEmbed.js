@@ -1,4 +1,3 @@
-// modules/twitchEmbed.js
 import fs from 'fs/promises';
 import { EmbedBuilder } from 'discord.js';
 
@@ -82,12 +81,15 @@ export async function getTwitchData({ skipCache = false } = {}) {
       const gameName = gameData.data?.[0]?.name || 'Desconocido';
 
       return {
+        enVivo: true,
         username: stream.user_name ?? TWITCH_USERNAME,
         title: stream.title ?? 'Sin título',
         url: `https://twitch.tv/${TWITCH_USERNAME}`,
         thumbnail: `https://static-cdn.jtvnw.net/previews-ttv/live_user_${TWITCH_USERNAME}-320x180.jpg`,
         gameName,
-        viewers: stream.viewer_count ?? 0
+        viewers: stream.viewer_count ?? 0,
+        duration: null,
+        publishedAt: null
       };
     }
 
@@ -115,6 +117,7 @@ export async function getTwitchData({ skipCache = false } = {}) {
     }
 
     return {
+      enVivo: false,
       username: TWITCH_USERNAME,
       title: vod.title ?? 'Sin título',
       url: vod.url ?? `https://twitch.tv/${TWITCH_USERNAME}`,
@@ -123,6 +126,7 @@ export async function getTwitchData({ skipCache = false } = {}) {
         : `https://static-cdn.jtvnw.net/previews-ttv/live_user_${TWITCH_USERNAME}-320x180.jpg`,
       gameName: null,
       viewers: null,
+      duration: vod.duration ?? null,
       publishedAt: vod.published_at ?? null
     };
   } catch (err) {
@@ -131,27 +135,28 @@ export async function getTwitchData({ skipCache = false } = {}) {
   }
 }
 
-export function buildTwitchEmbed(username, title, url, thumbnail, gameName, viewers, publishedAt) {
-  console.log('[twitchEmbed] Datos recibidos:', { username, title, url, thumbnail, gameName, viewers, publishedAt });
+export function buildTwitchEmbed(username, title, url, thumbnail, gameName, viewers, publishedAt, duration, enVivo) {
+  console.log('[twitchEmbed] Datos recibidos:', { username, title, url, thumbnail, gameName, viewers, publishedAt, duration, enVivo });
 
   const embed = new EmbedBuilder()
-    .setTitle(title ?? 'Sin título')
+    .setTitle(enVivo ? '🔴 En vivo en Twitch' : '📼 Último VOD en Twitch')
     .setURL(url ?? `https://twitch.tv/${TWITCH_USERNAME}`)
     .setImage(thumbnail ?? `https://static-cdn.jtvnw.net/previews-ttv/live_user_${TWITCH_USERNAME}-320x180.jpg`)
     .setColor('#9146FF')
     .setAuthor({ name: username ?? TWITCH_USERNAME });
 
-  if (gameName) {
-    embed.addFields({ name: 'Juego', value: gameName, inline: true });
-  }
+  embed.setDescription(`**${title}**`);
 
-  if (viewers !== null && viewers !== undefined) {
-    embed.setDescription(`🔴 En vivo con ${viewers} espectadores`);
-  } else if (publishedAt) {
-    embed.setDescription(`Último stream: ${new Date(publishedAt).toLocaleString()}`);
-  } else {
-    embed.setDescription('Stream finalizado');
-  }
+  const fields = [];
+
+  if (gameName) fields.push({ name: 'Juego', value: gameName, inline: true });
+  if (duration) fields.push({ name: 'Duración', value: duration, inline: true });
+  if (viewers !== null && viewers !== undefined) fields.push({ name: 'Espectadores', value: `${viewers}`, inline: true });
+  if (publishedAt) fields.push({ name: 'Publicado', value: new Date(publishedAt).toLocaleString(), inline: true });
+
+  if (fields.length > 0) embed.addFields(...fields);
+
+  embed.setFooter({ text: enVivo ? 'Ver el stream' : 'Ver el VOD' });
 
   return embed;
 }

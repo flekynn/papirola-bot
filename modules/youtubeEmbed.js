@@ -1,4 +1,3 @@
-// modules/youtubeEmbed.js
 import fs from 'fs/promises';
 import { EmbedBuilder } from 'discord.js';
 
@@ -53,11 +52,13 @@ export async function getYoutubeData({ skipCache = false } = {}) {
     lastVideoId = videoId;
 
     return {
+      enVivo: false,
       username: video.snippet?.channelTitle ?? 'Canal desconocido',
       title: video.snippet?.title ?? 'Sin título',
       url: `https://www.youtube.com/watch?v=${videoId}`,
       thumbnail: video.snippet?.thumbnails?.high?.url ?? 'https://www.youtube.com/img/branding/youtube-logo.png',
-      publishedAt: video.snippet?.publishedAt ?? null
+      publishedAt: video.snippet?.publishedAt ?? null,
+      duration: null
     };
   } catch (err) {
     console.error('[youtubeData:error]', err);
@@ -65,19 +66,26 @@ export async function getYoutubeData({ skipCache = false } = {}) {
   }
 }
 
-export function buildYoutubeEmbed(username, title, url, thumbnail, publishedAt) {
+export function buildYoutubeEmbed(username, title, url, thumbnail, publishedAt, duration, enVivo) {
+  console.log('[youtubeEmbed] Datos recibidos:', { username, title, url, thumbnail, publishedAt, duration, enVivo });
+
   const embed = new EmbedBuilder()
-    .setTitle(title ?? 'Sin título')
+    .setTitle('📺 Nuevo video en YouTube')
     .setURL(url ?? 'https://www.youtube.com')
     .setImage(thumbnail ?? 'https://www.youtube.com/img/branding/youtube-logo.png')
     .setColor('#FF0000')
     .setAuthor({ name: username ?? 'YouTube' });
 
-  if (publishedAt) {
-    embed.setFooter({ text: `Publicado: ${new Date(publishedAt).toLocaleString()}` });
-  } else {
-    embed.setFooter({ text: 'Video sin fecha disponible' });
-  }
+  embed.setDescription(`**${title}**`);
+
+  const fields = [];
+
+  if (publishedAt) fields.push({ name: 'Publicado', value: new Date(publishedAt).toLocaleString(), inline: true });
+  if (duration) fields.push({ name: 'Duración', value: duration, inline: true });
+
+  if (fields.length > 0) embed.addFields(...fields);
+
+  embed.setFooter({ text: 'Ver el video' });
 
   return embed;
 }
