@@ -11,7 +11,6 @@ client.commands = new Collection();
 const commandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('.js'));
 
 for (const file of commandFiles) {
-  // Import dinámico sin await en nivel superior
   const commandModule = await import(`./commands/${file}`);
   const { data, execute } = commandModule;
 
@@ -23,7 +22,7 @@ for (const file of commandFiles) {
   client.commands.set(data.name, { data, execute });
 }
 
-// Evento de conexión (correcto)
+// Evento de conexión
 client.once('clientReady', () => {
   console.log(`[discord] ✅ Bot conectado como ${client.user.tag}`);
 });
@@ -53,3 +52,13 @@ client.on('interactionCreate', async interaction => {
 
 // Login con el token
 client.login(process.env.DISCORD_TOKEN);
+
+// 🚀 Simular puerto para Railway
+if (process.env.PORT) {
+  const express = require('express');
+  const app = express();
+  app.get('/', (_, res) => res.send('Bot activo'));
+  app.listen(process.env.PORT, () => {
+    console.log(`[railway] Escuchando en puerto ${process.env.PORT}`);
+  });
+}
