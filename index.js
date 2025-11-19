@@ -11,6 +11,7 @@ client.commands = new Collection();
 const commandFiles = fs.readdirSync('./commands').filter(file => file.endsWith('.js'));
 
 for (const file of commandFiles) {
+  // Import dinámico sin await en nivel superior
   const commandModule = await import(`./commands/${file}`);
   const { data, execute } = commandModule;
 
@@ -22,8 +23,8 @@ for (const file of commandFiles) {
   client.commands.set(data.name, { data, execute });
 }
 
-// Evento de conexión
-client.once('clientReady', () => {
+// Evento de conexión (correcto)
+client.once('ready', () => {
   console.log(`[discord] ✅ Bot conectado como ${client.user.tag}`);
 });
 
