@@ -5,6 +5,7 @@ const { TWITCH_CLIENT_ID, TWITCH_CLIENT_SECRET, TWITCH_USERNAME } = process.env;
 const CACHE_FILE = './twitchCache.json';
 
 let accessToken = null;
+let tokenExpiry = 0;
 
 async function getLastVodId() {
   try {
@@ -21,15 +22,30 @@ async function setLastVodId(id) {
 }
 
 async function getAccessToken() {
-  if (accessToken) return accessToken;
+  const now = Date.now();
+  if (accessToken && now < tokenExpiry) {
+    console.log('[twitch:auth] 🟢 Token vigente, usando cache');
+    return accessToken;
+  }
+
   console.log('[twitch:auth] 🔄 Renovando token de Twitch...');
-  const res = await fetch(`https://id.twitch.tv/oauth2/token?...`, { method: 'POST' });
+  const res = await fetch('https://id.twitch.tv/oauth2/token', {
+    method: 'POST',
+    body: new URLSearchParams({
+      client_id: TWITCH_CLIENT_ID,
+      client_secret: TWITCH_CLIENT_SECRET,
+      grant_type: 'client_credentials',
+    }),
+  });
   const data = await res.json();
+
+  console.log('[twitch:auth] expires_in recibido:', data.expires_in);
+
   accessToken = data.access_token;
+  tokenExpiry = now + (data.expires_in || 3600) * 1000; // fallback 1h
   console.log('[twitch:auth] ✅ Token renovado correctamente');
   return accessToken;
 }
-
 
 export async function getTwitchData({ skipCache = false } = {}) {
   try {
@@ -56,12 +72,12 @@ export async function getTwitchData({ skipCache = false } = {}) {
       const gameName = gameData.data?.[0]?.name || 'Desconocido';
 
       return {
-        username: stream.user_name,
-        title: stream.title,
+        username: stream.user_name ?? TWITCH_USERNAME,
+        title: stream.title ?? 'Sin título',
         url: `https://twitch.tv/${TWITCH_USERNAME}`,
         thumbnail: `https://static-cdn.jtvnw.net/previews-ttv/live_user_${TWITCH_USERNAME}-320x180.jpg`,
         gameName,
-        viewers: stream.viewer_count
+        viewers: stream.viewer_count ?? 0
       };
     }
 
@@ -80,12 +96,14 @@ export async function getTwitchData({ skipCache = false } = {}) {
 
     return {
       username: TWITCH_USERNAME,
-      title: vod.title,
-      url: vod.url,
-      thumbnail: vod.thumbnail_url.replace('{width}', '320').replace('{height}', '180'),
+      title: vod.title ?? 'Sin título',
+      url: vod.url ?? `https://twitch.tv/${TWITCH_USERNAME}`,
+      thumbnail: vod.thumbnail_url
+        ? vod.thumbnail_url.replace('{width}', '320').replace('{height}', '180')
+        : `https://static-cdn.jtvnw.net/previews-ttv/live_user_${TWITCH_USERNAME}-320x180.jpg`,
       gameName: null,
       viewers: null,
-      publishedAt: vod.published_at
+      publishedAt: vod.published_at ?? null
     };
   } catch (err) {
     console.error('[twitchData:error]', err);
@@ -95,17 +113,17 @@ export async function getTwitchData({ skipCache = false } = {}) {
 
 export function buildTwitchEmbed(username, title, url, thumbnail, gameName, viewers, publishedAt) {
   const embed = new EmbedBuilder()
-    .setTitle(title)
-    .setURL(url)
-    .setImage(thumbnail)
-    .setColor('#9146FF') // color oficial de Twitch
-    .setAuthor({ name: username });
+    .setTitle(title ?? 'Sin título')
+    .setURL(url ?? `https://twitch.tv/${TWITCH_USERNAME}`)
+    .setImage(thumbnail ?? `https://static-cdn.jtvnw.net/previews-ttv/live_user_${TWITCH_USERNAME}-320x180.jpg`)
+    .setColor('#9146FF')
+    .setAuthor({ name: username ?? TWITCH_USERNAME });
 
   if (gameName) {
     embed.addFields({ name: 'Juego', value: gameName, inline: true });
   }
 
-  if (viewers !== null) {
+  if (viewers !== null && viewers !== undefined) {
     embed.setDescription(`🔴 En vivo con ${viewers} espectadores`);
   } else if (publishedAt) {
     embed.setDescription(`Último stream: ${new Date(publishedAt).toLocaleString()}`);

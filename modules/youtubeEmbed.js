@@ -31,10 +31,10 @@ export async function getYoutubeData({ skipCache = false } = {}) {
     const data = await res.json();
 
     if (data.error?.errors?.[0]?.reason === 'quotaExceeded') {
-  quotaBlocked = true;
-  console.warn('[youtube] ⚠️ Cuota de API excedida, bloqueando nuevas consultas');
-  return null;
-}
+      quotaBlocked = true;
+      console.warn('[youtube] ⚠️ Cuota de API excedida, bloqueando nuevas consultas');
+      return null;
+    }
 
     if (!data.items || data.items.length === 0) return null;
 
@@ -52,11 +52,11 @@ export async function getYoutubeData({ skipCache = false } = {}) {
     lastVideoId = videoId;
 
     return {
-      username: video.snippet.channelTitle,
-      title: video.snippet.title,
+      username: video.snippet.channelTitle ?? 'Canal desconocido',
+      title: video.snippet.title ?? 'Sin título',
       url: `https://www.youtube.com/watch?v=${videoId}`,
-      thumbnail: video.snippet.thumbnails.high.url,
-      publishedAt: video.snippet.publishedAt
+      thumbnail: video.snippet.thumbnails?.high?.url ?? 'https://www.youtube.com/img/branding/youtube-logo.png',
+      publishedAt: video.snippet.publishedAt ?? null
     };
   } catch (err) {
     console.error('[youtubeData:error]', err);
@@ -65,11 +65,16 @@ export async function getYoutubeData({ skipCache = false } = {}) {
 }
 
 export function buildYoutubeEmbed(username, title, url, thumbnail, publishedAt) {
-  return new EmbedBuilder()
-    .setTitle(title)
-    .setURL(url)
-    .setImage(thumbnail)
+  const embed = new EmbedBuilder()
+    .setTitle(title ?? 'Sin título')
+    .setURL(url ?? 'https://www.youtube.com')
+    .setImage(thumbnail ?? 'https://www.youtube.com/img/branding/youtube-logo.png')
     .setColor('#FF0000')
-    .setAuthor({ name: username })
-    .setFooter({ text: `Publicado: ${new Date(publishedAt).toLocaleString()}` });
+    .setAuthor({ name: username ?? 'YouTube' });
+
+  if (publishedAt) {
+    embed.setFooter({ text: `Publicado: ${new Date(publishedAt).toLocaleString()}` });
+  }
+
+  return embed;
 }

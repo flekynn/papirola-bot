@@ -1,40 +1,11 @@
-const {
-  KICK_CLIENT_ID,
-  KICK_CLIENT_SECRET,
-  KICK_USERNAME
-} = process.env;
-
+const { KICK_USERNAME } = process.env;
 import { EmbedBuilder } from 'discord.js';
 
-let accessToken = null;
 let lastStreamId = null;
-
-async function getKickToken() {
-  if (accessToken) return accessToken;
-  console.log('[kick:auth] 🔄 Renovando token de Kick...');
-
-  const res = await fetch("https://kick.com/oauth2/token", {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({
-      client_id: KICK_CLIENT_ID,
-      client_secret: KICK_CLIENT_SECRET,
-      grant_type: "client_credentials",
-    })
-  });
-
-  const data = await res.json();
-  accessToken = data.access_token;
-  console.log('[kick:auth] ✅ Token renovado correctamente');
-  return accessToken;
-}
 
 export async function getKickData({ skipCache = false } = {}) {
   try {
-    const token = await getKickToken();
-    const res = await fetch(`https://kick.com/api/v2/channels/${KICK_USERNAME}`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
+    const res = await fetch(`https://kick.com/api/v2/channels/${KICK_USERNAME}`);
     const data = await res.json();
     const stream = data.livestream;
 
@@ -45,12 +16,12 @@ export async function getKickData({ skipCache = false } = {}) {
       console.log(`[kick] 🔴 Stream en vivo detectado: ${stream.session_title}`);
 
       return {
-        username: stream.user.username,
-        title: stream.session_title,
+        username: stream.user?.username ?? KICK_USERNAME,
+        title: stream.session_title ?? 'Sin título',
         url: `https://kick.com/${KICK_USERNAME}`,
-        thumbnail: stream.thumbnail?.src || null,
-        category: stream.category?.name,
-        viewers: stream.viewer_count
+        thumbnail: stream.thumbnail?.src ?? null,
+        category: stream.category?.name ?? null,
+        viewers: stream.viewer_count ?? 0
       };
     }
 
@@ -64,12 +35,12 @@ export async function getKickData({ skipCache = false } = {}) {
 
     return {
       username: KICK_USERNAME,
-      title: last.session_title,
+      title: last.session_title ?? 'Sin título',
       url: `https://kick.com/${KICK_USERNAME}`,
-      thumbnail: last.thumbnail?.src || null,
-      category: last.category?.name,
+      thumbnail: last.thumbnail?.src ?? null,
+      category: last.category?.name ?? null,
       viewers: null,
-      publishedAt: last.created_at
+      publishedAt: last.created_at ?? null
     };
   } catch (err) {
     console.error('[kickData:error]', err);
@@ -79,14 +50,14 @@ export async function getKickData({ skipCache = false } = {}) {
 
 export function buildKickEmbed(username, title, url, thumbnail, category, viewers, publishedAt) {
   const embed = new EmbedBuilder()
-    .setTitle(title)
-    .setURL(url)
+    .setTitle(title ?? 'Sin título')
+    .setURL(url ?? `https://kick.com/${KICK_USERNAME}`)
     .setColor('#00FF00')
-    .setAuthor({ name: username })
-    .setImage(thumbnail || 'https://kick.com/assets/images/kick-logo.png')
+    .setAuthor({ name: username ?? KICK_USERNAME })
+    .setImage(thumbnail ?? 'https://kick.com/assets/images/kick-logo.png')
     .setFooter({ text: category ? `Categoría: ${category}` : 'Kick Stream' });
 
-  if (viewers !== null) {
+  if (viewers !== null && viewers !== undefined) {
     embed.setDescription(`🔴 En vivo con ${viewers} espectadores`);
   } else if (publishedAt) {
     embed.setDescription(`Último stream: ${new Date(publishedAt).toLocaleString()}`);

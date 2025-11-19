@@ -38,7 +38,7 @@ async function getTwitchToken() {
   return twitchToken;
 }
 
-// Helper para Kick (ajustá endpoint según tu implementación real)
+// Helper para Kick (⚠️ revisar endpoint oficial)
 async function getKickToken() {
   const now = Date.now();
   if (kickToken && now < kickTokenExpiry) {
@@ -60,12 +60,12 @@ async function getKickToken() {
   console.log('[kick:auth] expires_in recibido:', data.expires_in);
 
   kickToken = data.access_token;
-  kickTokenExpiry = now + (data.expires_in || 3600) * 1000;
+  kickTokenExpiry = now + (data.expires_in || 3600) * 1000; // fallback 1h
   console.log('[kick:auth] ✅ Token renovado correctamente');
   return kickToken;
 }
 
-// Helper para YouTube (ajustá según tu flujo OAuth real)
+// Helper para YouTube (⚠️ usar API Key o OAuth real)
 async function getYoutubeToken() {
   const now = Date.now();
   if (youtubeToken && now < youtubeTokenExpiry) {
@@ -87,7 +87,7 @@ async function getYoutubeToken() {
   console.log('[youtube:auth] expires_in recibido:', data.expires_in);
 
   youtubeToken = data.access_token;
-  youtubeTokenExpiry = now + (data.expires_in || 3600) * 1000;
+  youtubeTokenExpiry = now + (data.expires_in || 3600) * 1000; // fallback 1h
   console.log('[youtube:auth] ✅ Token renovado correctamente');
   return youtubeToken;
 }
