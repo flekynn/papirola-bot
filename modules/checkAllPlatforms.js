@@ -1,18 +1,18 @@
+// checkAllPlatforms.js
 import fetch from 'node-fetch';
 import { buildTwitchEmbed } from './twitchEmbed.js';
 import { buildKickEmbed } from './kickEmbed.js';
 import { buildYoutubeEmbed } from './youtubeEmbed.js';
 
+// Variables persistentes a nivel de módulo
 let twitchToken = null;
 let twitchTokenExpiry = 0;
-
 let kickToken = null;
 let kickTokenExpiry = 0;
-
 let youtubeToken = null;
 let youtubeTokenExpiry = 0;
 
-// 🔧 Helper para Twitch
+// Helper para Twitch
 async function getTwitchToken() {
   const now = Date.now();
   if (twitchToken && now < twitchTokenExpiry) {
@@ -32,12 +32,12 @@ async function getTwitchToken() {
   const data = await response.json();
 
   twitchToken = data.access_token;
-  twitchTokenExpiry = now + data.expires_in * 1000;
+  twitchTokenExpiry = now + data.expires_in * 1000; // ojo con el *1000
   console.log('[twitch:auth] ✅ Token renovado correctamente');
   return twitchToken;
 }
 
-// 🔧 Helper para Kick
+// Helper para Kick (ajustá endpoint según tu implementación)
 async function getKickToken() {
   const now = Date.now();
   if (kickToken && now < kickTokenExpiry) {
@@ -46,7 +46,6 @@ async function getKickToken() {
   }
 
   console.log('[kick:auth] 🔄 Renovando token de Kick...');
-  // Ajustá según tu endpoint real de Kick
   const response = await fetch('https://kick.com/oauth/token', {
     method: 'POST',
     body: new URLSearchParams({
@@ -63,7 +62,7 @@ async function getKickToken() {
   return kickToken;
 }
 
-// 🔧 Helper para YouTube
+// Helper para YouTube (ajustá según tu flujo OAuth)
 async function getYoutubeToken() {
   const now = Date.now();
   if (youtubeToken && now < youtubeTokenExpiry) {
@@ -72,7 +71,6 @@ async function getYoutubeToken() {
   }
 
   console.log('[youtube:auth] 🔄 Renovando token de YouTube...');
-  // Ajustá según tu flujo de OAuth de YouTube
   const response = await fetch('https://oauth2.googleapis.com/token', {
     method: 'POST',
     body: new URLSearchParams({
@@ -89,8 +87,8 @@ async function getYoutubeToken() {
   return youtubeToken;
 }
 
-// 🔎 Función principal
-export async function checkAllPlatforms({ skipCache = false } = {}) {
+// Función principal
+export async function checkAllPlatforms() {
   try {
     const twitchToken = await getTwitchToken();
     const kickToken = await getKickToken();
