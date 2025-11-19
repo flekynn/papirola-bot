@@ -76,7 +76,7 @@ export async function getTwitchData({ skipCache = false } = {}) {
       return {
         enVivo: true,
         username: stream.user_name ?? TWITCH_USERNAME,
-        title: stream.title ?? 'Sin título',
+        title: stream.title || 'Sin título',
         url: `https://twitch.tv/${TWITCH_USERNAME}`,
         thumbnail: `https://static-cdn.jtvnw.net/previews-ttv/live_user_${TWITCH_USERNAME}-320x180.jpg`,
         gameName,
@@ -106,8 +106,8 @@ export async function getTwitchData({ skipCache = false } = {}) {
     return {
       enVivo: false,
       username: TWITCH_USERNAME,
-      title: vod.title ?? 'Sin título',
-      url: vod.url ?? `https://twitch.tv/${TWITCH_USERNAME}`,
+      title: vod.title || 'Sin título',
+      url: vod.url || `https://twitch.tv/${TWITCH_USERNAME}`,
       thumbnail: vod.thumbnail_url
         ? vod.thumbnail_url.replace('{width}', '320').replace('{height}', '180')
         : `https://static-cdn.jtvnw.net/previews-ttv/live_user_${TWITCH_USERNAME}-320x180.jpg`,
@@ -136,28 +136,35 @@ function formatDate(isoString) {
 export function buildTwitchEmbed({ username, title, url, thumbnail, gameName, viewers, publishedAt, duration, enVivo }) {
   console.log('[twitchEmbed] Datos recibidos:', { username, title, url, thumbnail, gameName, viewers, publishedAt, duration, enVivo });
 
+  // 🔧 Fix: limpiar thumbnail si viene con %320x%180
+  const cleanThumb = (thumb) => {
+    if (!thumb) return `https://static-cdn.jtvnw.net/previews-ttv/live_user_${TWITCH_USERNAME}-320x180.jpg`;
+    return thumb.replace('%320x%180', '320x180');
+  };
+
   const embed = new EmbedBuilder()
     .setColor('#9146FF')
     .setAuthor({ name: username ?? TWITCH_USERNAME, url: `https://twitch.tv/${username ?? TWITCH_USERNAME}` });
 
   if (enVivo) {
-    embed.setTitle(`🟢 ${title}`);
+    embed.setTitle(`🟢 ${title ?? 'Sin título'}`);
     embed.setDescription([
       gameName ? `📺 Categoría: ${gameName}` : null,
       `👥 Viewers: ${viewers ?? 0}`,
-      `🔗 Ver en vivo: ${url}`
+      `🔗 Ver en vivo: ${url ?? `https://twitch.tv/${TWITCH_USERNAME}`}`
     ].filter(Boolean).join('\n'));
     embed.setFooter({ text: 'En vivo en Twitch' });
   } else {
-    embed.setTitle(`📼 ${title}`);
+    embed.setTitle(`📼 ${title ?? 'Sin título'}`);
     embed.setDescription([
       duration ? `⏱️ Duración: ${duration}` : null,
-      publishedAt ? `📅 Publicado: ${formatDate(publishedAt)}` : null,
-      `🔗 Ver el VOD: ${url}`
+      publishedAt ? `📅 Publicado: ${new Date(publishedAt).toLocaleString('es-AR')}` : null,
+      `🔗 Ver el VOD: ${url ?? `https://twitch.tv/${TWITCH_USERNAME}`}`
     ].filter(Boolean).join('\n'));
     embed.setFooter({ text: 'Último VOD en Twitch' });
   }
 
-  if (thumbnail) embed.setImage(thumbnail);
+  embed.setImage(cleanThumb(thumbnail));
   return embed;
 }
+

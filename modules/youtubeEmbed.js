@@ -53,10 +53,10 @@ export async function getYoutubeData({ skipCache = false } = {}) {
     lastVideoId = videoId;
 
     return {
-      username: video.snippet?.channelTitle ?? 'Canal desconocido',
-      title: video.snippet?.title ?? 'Sin título',
+      username: video.snippet?.channelTitle || 'Canal desconocido',
+      title: video.snippet?.title || 'Sin título',
       url: `https://www.youtube.com/watch?v=${videoId}`,
-      thumbnail: video.snippet?.thumbnails?.high?.url ?? 'https://www.youtube.com/img/branding/youtube-logo.png',
+      thumbnail: video.snippet?.thumbnails?.high?.url || 'https://www.youtube.com/img/branding/youtube-logo.png',
       publishedAt: video.snippet?.publishedAt ?? null,
       duration: null
     };
@@ -76,21 +76,33 @@ function formatDate(isoString) {
   });
 }
 
-/** Construir embed */
-export function buildYoutubeEmbed({ username, title, url, thumbnail, publishedAt }) {
-  console.log('[youtubeEmbed] Datos recibidos:', { username, title, url, thumbnail, publishedAt });
+/** Construir embed — firma dual (objeto o posicional) */
+export function buildYoutubeEmbed(arg1, title, url, thumbnail, publishedAt) {
+  const data = typeof arg1 === 'object' && arg1 !== null
+    ? arg1
+    : { username: arg1, title, url, thumbnail, publishedAt };
+
+  const {
+    username = 'YouTube',
+    title: t = 'Sin título',
+    url: u = 'https://www.youtube.com',
+    thumbnail: th = 'https://www.youtube.com/img/branding/youtube-logo.png',
+    publishedAt: p
+  } = data;
+
+  console.log('[youtubeEmbed] Datos recibidos:', { username, title: t, url: u, thumbnail: th, publishedAt: p });
 
   const embed = new EmbedBuilder()
     .setColor('#FF0000')
-    .setAuthor({ name: username ?? 'YouTube', url: `https://www.youtube.com/channel/${YOUTUBE_CHANNEL_ID}` })
-    .setTitle(`📺 ${title}`);
+    .setAuthor({ name: username, url: `https://www.youtube.com/channel/${YOUTUBE_CHANNEL_ID}` })
+    .setTitle(`📺 ${t}`);
 
   embed.setDescription([
-    publishedAt ? `📅 Publicado: ${formatDate(publishedAt)}` : null,
-    `🔗 Ver el video: ${url}`
+    p ? `📅 Publicado: ${formatDate(p)}` : null,
+    `🔗 Ver el video: ${u}`
   ].filter(Boolean).join('\n'));
 
-  if (thumbnail) embed.setImage(thumbnail);
+  if (th) embed.setImage(th);
   embed.setFooter({ text: 'Nuevo video en YouTube' });
 
   return embed;

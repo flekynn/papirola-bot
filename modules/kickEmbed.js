@@ -3,12 +3,14 @@ const { KICK_USERNAME } = process.env;
 
 let lastStreamId = null;
 
+/** Obtener datos de Kick (stream o último VOD) */
 export async function getKickData({ skipCache = false } = {}) {
   try {
     const res = await fetch(`https://kick.com/api/v2/channels/${KICK_USERNAME}`);
     const data = await res.json();
     const stream = data.livestream;
 
+    // 🟢 Stream en vivo
     if (stream?.is_live) {
       if (!skipCache && stream.id === lastStreamId) {
         console.log('[kickData] ⚠️ Stream ya fue publicado, ignorando');
@@ -21,16 +23,17 @@ export async function getKickData({ skipCache = false } = {}) {
       return {
         enVivo: true,
         username: stream.user?.username ?? KICK_USERNAME,
-        title: stream.session_title ?? 'Sin título',
+        title: stream.session_title || 'Sin título',
         url: `https://kick.com/${KICK_USERNAME}`,
-        thumbnail: stream.thumbnail?.src ?? 'https://kick.com/assets/images/kick-logo.png',
-        category: stream.category?.name ?? 'Sin categoría',
+        thumbnail: stream.thumbnail?.src || 'https://kick.com/assets/images/kick-logo.png',
+        category: stream.category?.name || 'Sin categoría',
         viewers: stream.viewer_count ?? 0,
         duration: null,
         publishedAt: null
       };
     }
 
+    // 📼 Último VOD
     const last = data.recent_livestreams?.[0];
     if (!last) {
       console.warn('[kickData] ❌ No se encontró ningún VOD');
@@ -48,10 +51,10 @@ export async function getKickData({ skipCache = false } = {}) {
     return {
       enVivo: false,
       username: KICK_USERNAME,
-      title: last.session_title ?? 'Sin título',
+      title: last.session_title || 'Sin título',
       url: `https://kick.com/${KICK_USERNAME}`,
-      thumbnail: last.thumbnail?.src ?? 'https://kick.com/assets/images/kick-logo.png',
-      category: last.category?.name ?? 'Sin categoría',
+      thumbnail: last.thumbnail?.src || 'https://kick.com/assets/images/kick-logo.png',
+      category: last.category?.name || 'Sin categoría',
       viewers: null,
       duration: last.duration ?? null,
       publishedAt: last.created_at ?? null
@@ -62,28 +65,58 @@ export async function getKickData({ skipCache = false } = {}) {
   }
 }
 
-export function buildKickEmbed(username, title, url, thumbnail, category, viewers, publishedAt, duration, enVivo) {
-  console.log('[kickEmbed] Datos recibidos:', { username, title, url, thumbnail, category, viewers, publishedAt, duration, enVivo });
+/** Formatear fecha */
+function formatDate(isoString) {
+  if (!isoString) return '';
+  const date = new Date(isoString);
+  return date.toLocaleString('es-AR', {
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit', hour12: false
+  });
+}
+
+/** Construir embed — firma dual (objeto o posicional) */
+export function buildKickEmbed(arg1, title, url, thumbnail, category, viewers, publishedAt, duration, enVivo) {
+  const data = typeof arg1 === 'object' && arg1 !== null
+    ? arg1
+    : { username: arg1, title, url, thumbnail, category, viewers, publishedAt, duration, enVivo };
+
+  const {
+    username = KICK_USERNAME,
+    title: t = 'Sin título',
+    url: u = `https://kick.com/${KICK_USERNAME}`,
+    thumbnail: th = 'https://kick.com/assets/images/kick-logo.png',
+    category: c,
+    viewers: v,
+    publishedAt: p,
+    duration: d,
+    enVivo: live = false
+  } = data;
+
+  console.log('[kickEmbed] Datos recibidos:', { username, title: t, url: u, thumbnail: th, category: c, viewers: v, publishedAt: p, duration: d, enVivo: live });
 
   const embed = new EmbedBuilder()
-    .setTitle(enVivo ? '🟢 En vivo en Kick' : '📼 Último VOD en Kick')
-    .setURL(url ?? `https://kick.com/${KICK_USERNAME}`)
-    .setImage(thumbnail ?? 'https://kick.com/assets/images/kick-logo.png')
     .setColor('#00FF00')
-    .setAuthor({ name: username ?? KICK_USERNAME });
+    .setAuthor({ name: username, url: `https://kick.com/${username}` });
 
-  embed.setDescription(`**${title}**`);
+  if (live) {
+    embed.setTitle(`🟢 ${t}`);
+    embed.setDescription([
+      c ? `📺 Categoría: ${c}` : null,
+      `👥 Viewers: ${v ?? 0}`,
+      `🔗 Ver en vivo: ${u}`
+    ].filter(Boolean).join('\n'));
+    embed.setFooter({ text: 'En vivo en Kick' });
+  } else {
+    embed.setTitle(`📼 ${t}`);
+    embed.setDescription([
+      d ? `⏱️ Duración: ${d}` : null,
+      p ? `📅 Publicado: ${formatDate(p)}` : null,
+      `🔗 Ver el VOD: ${u}`
+    ].filter(Boolean).join('\n'));
+    embed.setFooter({ text: 'Último VOD en Kick' });
+  }
 
-  const fields = [];
-
-  if (category) fields.push({ name: 'Categoría', value: category, inline: true });
-  if (duration) fields.push({ name: 'Duración', value: duration, inline: true });
-  if (viewers !== null && viewers !== undefined) fields.push({ name: 'Espectadores', value: `${viewers}`, inline: true });
-  if (publishedAt) fields.push({ name: 'Publicado', value: new Date(publishedAt).toLocaleString(), inline: true });
-
-  if (fields.length > 0) embed.addFields(...fields);
-
-  embed.setFooter({ text: enVivo ? 'Ver el stream' : 'Ver el VOD' });
-
+  if (th) embed.setImage(th);
   return embed;
 }
