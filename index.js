@@ -56,6 +56,7 @@ client.once('clientReady', async () => {
 client.on('interactionCreate', async (interaction) => {
   if (!interaction.isChatInputCommand()) return;
 
+  // Comando /test_stream
   if (interaction.commandName === 'test_stream') {
     try {
       await interaction.deferReply();
@@ -80,6 +81,7 @@ client.on('interactionCreate', async (interaction) => {
     }
   }
 
+  // Comando /force_check
   if (interaction.commandName === 'force_check') {
     try {
       await interaction.deferReply();
@@ -93,7 +95,7 @@ client.on('interactionCreate', async (interaction) => {
       if (!twitchEmbed && !kickEmbed && !youtubeEmbed) {
         await interaction.editReply('✅ No hay novedades en Twitch, YouTube ni Kick.');
       } else {
-        await interaction.editReply('🔍 Resultados:');
+        await interaction.editReply('🔍 Se encontraron novedades. Enviando al canal...');
         if (twitchEmbed) await channel.send({ content: `<@&${MENTION_ROLE_ID}>`, embeds: [twitchEmbed] });
         if (kickEmbed) await channel.send({ content: `<@&${MENTION_ROLE_ID}>`, embeds: [kickEmbed] });
         if (youtubeEmbed) await channel.send({ content: `<@&${MENTION_ROLE_ID}>`, embeds: [youtubeEmbed] });
