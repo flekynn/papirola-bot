@@ -1,13 +1,13 @@
-# Papirola Bot
+# 📺 Papirola Bot
 
-Bot de Discord para notificar transmisiones en vivo y nuevos videos de **Twitch**, **YouTube** y **Kick**.  
-Desarrollado en **Node.js** con `discord.js` v14 y preparado para deploy en **Railway**.
+Bot de Discord modular para notificar streams en **Twitch**, **Kick** y **YouTube**, con comandos de prueba y chequeo forzado.  
+Diseñado para ser escalable: fácil de extender con moderación, saludos personalizados y más.
 
 ---
 
-## 🚀 Instalación local
+## 🚀 Instalación
 
-1. Clonar el repositorio:
+1. Clona el repositorio:
    ```bash
    git clone https://github.com/flekynn/papirola-bot.git
    cd papirola-bot

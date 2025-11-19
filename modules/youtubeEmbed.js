@@ -1,16 +1,27 @@
-import fetch from 'node-fetch';
-import { EmbedBuilder } from 'discord.js';
+import fs from 'fs/promises';
 
 const { YOUTUBE_API_KEY, YOUTUBE_CHANNEL_ID } = process.env;
+const CACHE_FILE = './youtubeCache.json';
 
 let lastVideoId = null;
 let quotaBlocked = false;
 
-export async function getYoutubeEmbed({ skipCache = false } = {}) {
-  if (quotaBlocked) {
-    console.log('[youtubeEmbed] Chequeo bloqueado por cuota excedida.');
+async function getLastVideoId() {
+  try {
+    const raw = await fs.readFile(CACHE_FILE, 'utf8');
+    const json = JSON.parse(raw);
+    return json.lastVideoId;
+  } catch {
     return null;
   }
+}
+
+async function setLastVideoId(id) {
+  await fs.writeFile(CACHE_FILE, JSON.stringify({ lastVideoId: id }));
+}
+
+export async function getYoutubeData({ skipCache = false } = {}) {
+  if (quotaBlocked) return null;
 
   const url = `https://www.googleapis.com/youtube/v3/search?key=${YOUTUBE_API_KEY}&channelId=${YOUTUBE_CHANNEL_ID}&part=snippet,id&order=date&maxResults=1`;
 
@@ -19,47 +30,33 @@ export async function getYoutubeEmbed({ skipCache = false } = {}) {
     const data = await res.json();
 
     if (data.error?.errors?.[0]?.reason === 'quotaExceeded') {
-      console.log('[youtubeEmbed] Cuota excedida, bloqueando chequeos.');
       quotaBlocked = true;
       return null;
     }
 
-    console.log('[youtubeEmbed] API response:', JSON.stringify(data, null, 2));
-
-    if (!data.items || data.items.length === 0) {
-      console.log('[youtubeEmbed] No se encontraron videos.');
-      return null;
-    }
+    if (!data.items || data.items.length === 0) return null;
 
     const video = data.items[0];
-
-    if (video.id.kind !== 'youtube#video') {
-      console.log('[youtubeEmbed] El contenido más reciente no es un video.');
-      return null;
-    }
+    if (video.id.kind !== 'youtube#video') return null;
 
     const videoId = video.id.videoId;
 
-    if (!skipCache && videoId === lastVideoId) {
-      console.log('[youtubeEmbed] Video ya detectado, ignorando:', videoId);
-      return null;
+    if (!skipCache) {
+      const lastId = lastVideoId || await getLastVideoId();
+      if (videoId === lastId) return null;
+      await setLastVideoId(videoId);
     }
 
     lastVideoId = videoId;
 
-    const embed = new EmbedBuilder()
-      .setTitle(video.snippet.title)
-      .setURL(`https://www.youtube.com/watch?v=${videoId}`)
-      .setDescription(video.snippet.description || 'Nuevo video en YouTube')
-      .setThumbnail(video.snippet.thumbnails.high.url)
-      .setTimestamp(new Date(video.snippet.publishedAt))
-      .setColor(0xff0000)
-      .setAuthor({ name: video.snippet.channelTitle });
-
-    console.log('[youtubeEmbed] Nuevo video detectado:', videoId);
-    return embed;
+    return {
+      username: video.snippet.channelTitle,
+      title: video.snippet.title,
+      url: `https://www.youtube.com/watch?v=${videoId}`,
+      thumbnail: video.snippet.thumbnails.high.url,
+      publishedAt: video.snippet.publishedAt
+    };
   } catch (err) {
-    console.error('[youtubeEmbed:error]', err);
+    console.error('[youtubeData:error]', err);
     return null;
   }
-}

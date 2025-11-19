@@ -21,7 +21,6 @@ export default {
   async execute(interaction, client) {
     try {
       await interaction.deferReply();
-
       const plataforma = interaction.options.getString('plataforma');
       const { twitchEmbed, kickEmbed, youtubeEmbed } = await checkAllPlatforms({ skipCache: true });
 
@@ -39,8 +38,10 @@ export default {
       }
     } catch (err) {
       console.error('[test_stream:error]', err);
-      if (interaction.deferred) {
+      if (interaction.deferred || interaction.replied) {
         await interaction.editReply('❌ Error al ejecutar test_stream.');
+      } else {
+        await interaction.reply({ content: '❌ Error al ejecutar test_stream.', flags: 64 });
       }
     }
   },

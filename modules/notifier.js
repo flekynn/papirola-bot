@@ -1,41 +1,47 @@
-import { getTwitchEmbed } from './twitchEmbed.js';
-import { getKickEmbed } from './kickEmbed.js';
-import { getYoutubeEmbed } from './youtubeEmbed.js';
-import axios from 'axios';
+import { getTwitchData } from './twitchEmbed.js';
+import { getKickData } from './kickEmbed.js';
+import { getYoutubeData } from './youtubeEmbed.js';
+import { buildTwitchEmbed, buildKickEmbed, buildYoutubeEmbed } from './messages.js';
 
 const {
   STREAM_CHANNEL_ID,
-  TWITCH_USER,
-  KICK_USER,
-  MENTION_ROLE_ID,
-  TWITCH_CLIENT_ID,
-  TWITCH_CLIENT_SECRET,
+  MENTION_ROLE_ID
 } = process.env;
 
 let twitchLive = false;
 let kickLive = false;
-let twitchToken = null;
-
-async function refreshTwitchToken() {
-  try {
-    const res = await axios.post('https://id.twitch.tv/oauth2/token', null, {
-      params: {
-        client_id: TWITCH_CLIENT_ID,
-        client_secret: TWITCH_CLIENT_SECRET,
-        grant_type: 'client_credentials',
-      },
-    });
-    twitchToken = res.data.access_token;
-    console.log(`[${new Date().toLocaleTimeString()}] 🔄 Token Twitch renovado`);
-  } catch (err) {
-    console.log('Error renovando token Twitch:', err.message);
-  }
-}
+let youtubeLive = false;
 
 export async function checkAllPlatforms({ skipCache = false } = {}) {
-  const twitchEmbed = await getTwitchEmbed({ skipCache, token: twitchToken, user: TWITCH_USER });
-  const kickEmbed = await getKickEmbed({ skipCache, user: KICK_USER });
-  const youtubeEmbed = await getYoutubeEmbed({ skipCache });
+  const twitchData = await getTwitchData({ skipCache });
+  const kickData = await getKickData({ skipCache });
+  const youtubeData = await getYoutubeData({ skipCache });
+
+  const twitchEmbed = twitchData ? buildTwitchEmbed(
+    twitchData.username,
+    twitchData.title,
+    twitchData.url,
+    twitchData.thumbnail,
+    twitchData.gameName,
+    twitchData.viewers
+  ) : null;
+
+  const kickEmbed = kickData ? buildKickEmbed(
+    kickData.username,
+    kickData.title,
+    kickData.url,
+    kickData.thumbnail,
+    kickData.category,
+    kickData.viewers
+  ) : null;
+
+  const youtubeEmbed = youtubeData ? buildYoutubeEmbed(
+    youtubeData.username,
+    youtubeData.title,
+    youtubeData.url,
+    youtubeData.thumbnail,
+    youtubeData.publishedAt
+  ) : null;
 
   return { twitchEmbed, kickEmbed, youtubeEmbed };
 }
@@ -50,24 +56,27 @@ export function startNotifier(client) {
     if (twitchEmbed && !twitchLive) {
       await channel.send({ content: `<@&${MENTION_ROLE_ID}>`, embeds: [twitchEmbed] });
       twitchLive = true;
-    } else if (!twitchEmbed) {
-      twitchLive = false;
-    }
+    } else if (!twitchEmbed) twitchLive = false;
 
     if (kickEmbed && !kickLive) {
       await channel.send({ content: `<@&${MENTION_ROLE_ID}>`, embeds: [kickEmbed] });
       kickLive = true;
-    } else if (!kickEmbed) {
-      kickLive = false;
-    }
+    } else if (!kickEmbed) kickLive = false;
 
-    if (youtubeEmbed) {
+    if (youtubeEmbed && !youtubeLive) {
       await channel.send({ content: `<@&${MENTION_ROLE_ID}>`, embeds: [youtubeEmbed] });
-    }
+      youtubeLive = true;
+    } else if (!youtubeEmbed) youtubeLive = false;
   }
 
-  refreshTwitchToken();
-  notify();
-  setInterval(notify, 60 * 1000);
-  setInterval(refreshTwitchToken, 50 * 60 * 1000);
+  // 👉 Sembrar cache inicial sin enviar notificaciones
+  (async () => {
+    await checkAllPlatforms({ skipCache: false });
+    console.log('[notifier] Cache inicial sembrado, evitando notificaciones en el arranque.');
+  })();
+
+  // 👉 Intervalos fijos
+  setInterval(notify, 60000);   // Twitch cada 1 min
+  setInterval(notify, 60000);   // Kick cada 1 min
+  setInterval(notify, 900000);  // YouTube cada 15 min
 }

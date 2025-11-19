@@ -1,6 +1,4 @@
-import { getTwitchEmbed } from '../modules/twitchEmbed.js';
-import { getKickEmbed } from '../modules/kickEmbed.js';
-import { getYoutubeEmbed } from '../modules/youtubeEmbed.js';
+import { checkAllPlatforms } from '../modules/notifier.js';
 
 export default {
   data: {
@@ -10,11 +8,7 @@ export default {
   async execute(interaction, client) {
     try {
       await interaction.deferReply();
-
-      const twitchEmbed = await getTwitchEmbed({ skipCache: true });
-      const kickEmbed = await getKickEmbed({ skipCache: true });
-      const youtubeEmbed = await getYoutubeEmbed({ skipCache: true });
-
+      const { twitchEmbed, kickEmbed, youtubeEmbed } = await checkAllPlatforms({ skipCache: true });
       const channel = await client.channels.fetch(process.env.TEST_CHANNEL_ID);
 
       if (!twitchEmbed && !kickEmbed && !youtubeEmbed) {
@@ -27,8 +21,10 @@ export default {
       }
     } catch (err) {
       console.error('[force_check:error]', err);
-      if (interaction.deferred) {
+      if (interaction.deferred || interaction.replied) {
         await interaction.editReply('❌ Error al ejecutar force_check.');
+      } else {
+        await interaction.reply({ content: '❌ Error al ejecutar force_check.', flags: 64 });
       }
     }
   },
