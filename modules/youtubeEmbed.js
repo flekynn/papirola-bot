@@ -52,11 +52,11 @@ export async function getYoutubeData({ skipCache = false } = {}) {
     lastVideoId = videoId;
 
     return {
-      username: video.snippet.channelTitle ?? 'Canal desconocido',
-      title: video.snippet.title ?? 'Sin título',
+      username: video.snippet?.channelTitle ?? 'Canal desconocido',
+      title: video.snippet?.title ?? 'Sin título',
       url: `https://www.youtube.com/watch?v=${videoId}`,
-      thumbnail: video.snippet.thumbnails?.high?.url ?? 'https://www.youtube.com/img/branding/youtube-logo.png',
-      publishedAt: video.snippet.publishedAt ?? null
+      thumbnail: video.snippet?.thumbnails?.high?.url ?? 'https://www.youtube.com/img/branding/youtube-logo.png',
+      publishedAt: video.snippet?.publishedAt ?? null
     };
   } catch (err) {
     console.error('[youtubeData:error]', err);
@@ -74,6 +74,8 @@ export function buildYoutubeEmbed(username, title, url, thumbnail, publishedAt) 
 
   if (publishedAt) {
     embed.setFooter({ text: `Publicado: ${new Date(publishedAt).toLocaleString()}` });
+  } else {
+    embed.setFooter({ text: 'Video sin fecha disponible' });
   }
 
   return embed;

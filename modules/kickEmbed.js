@@ -19,8 +19,8 @@ export async function getKickData({ skipCache = false } = {}) {
         username: stream.user?.username ?? KICK_USERNAME,
         title: stream.session_title ?? 'Sin título',
         url: `https://kick.com/${KICK_USERNAME}`,
-        thumbnail: stream.thumbnail?.src ?? null,
-        category: stream.category?.name ?? null,
+        thumbnail: stream.thumbnail?.src ?? 'https://kick.com/assets/images/kick-logo.png',
+        category: stream.category?.name ?? 'Sin categoría',
         viewers: stream.viewer_count ?? 0
       };
     }
@@ -37,8 +37,8 @@ export async function getKickData({ skipCache = false } = {}) {
       username: KICK_USERNAME,
       title: last.session_title ?? 'Sin título',
       url: `https://kick.com/${KICK_USERNAME}`,
-      thumbnail: last.thumbnail?.src ?? null,
-      category: last.category?.name ?? null,
+      thumbnail: last.thumbnail?.src ?? 'https://kick.com/assets/images/kick-logo.png',
+      category: last.category?.name ?? 'Sin categoría',
       viewers: null,
       publishedAt: last.created_at ?? null
     };
@@ -61,6 +61,8 @@ export function buildKickEmbed(username, title, url, thumbnail, category, viewer
     embed.setDescription(`🔴 En vivo con ${viewers} espectadores`);
   } else if (publishedAt) {
     embed.setDescription(`Último stream: ${new Date(publishedAt).toLocaleString()}`);
+  } else {
+    embed.setDescription('Stream finalizado');
   }
 
   return embed;

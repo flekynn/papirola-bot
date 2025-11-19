@@ -42,7 +42,7 @@ async function getAccessToken() {
   console.log('[twitch:auth] expires_in recibido:', data.expires_in);
 
   accessToken = data.access_token;
-  tokenExpiry = now + (data.expires_in || 3600) * 1000; // fallback 1h
+  tokenExpiry = now + (data.expires_in || 3600) * 1000;
   console.log('[twitch:auth] ✅ Token renovado correctamente');
   return accessToken;
 }
@@ -55,20 +55,29 @@ export async function getTwitchData({ skipCache = false } = {}) {
       headers: { 'Client-ID': TWITCH_CLIENT_ID, 'Authorization': `Bearer ${token}` }
     });
     const userData = await userRes.json();
+    console.log('[twitchData] userData:', userData);
+
     const userId = userData.data?.[0]?.id;
-    if (!userId) return null;
+    if (!userId) {
+      console.warn('[twitchData] ❌ No se encontró el userId');
+      return null;
+    }
 
     const streamRes = await fetch(`https://api.twitch.tv/helix/streams?user_id=${userId}`, {
       headers: { 'Client-ID': TWITCH_CLIENT_ID, 'Authorization': `Bearer ${token}` }
     });
     const streamData = await streamRes.json();
     const stream = streamData.data?.[0];
+    console.log('[twitchData] streamData:', streamData);
+    console.log('[twitchData] stream:', stream);
 
     if (stream) {
       const gameRes = await fetch(`https://api.twitch.tv/helix/games?id=${stream.game_id}`, {
         headers: { 'Client-ID': TWITCH_CLIENT_ID, 'Authorization': `Bearer ${token}` }
       });
       const gameData = await gameRes.json();
+      console.log('[twitchData] gameData:', gameData);
+
       const gameName = gameData.data?.[0]?.name || 'Desconocido';
 
       return {
@@ -86,11 +95,21 @@ export async function getTwitchData({ skipCache = false } = {}) {
     });
     const vodData = await vodRes.json();
     const vod = vodData.data?.[0];
-    if (!vod) return null;
+    console.log('[twitchData] vodData:', vodData);
+    console.log('[twitchData] vod:', vod);
+
+    if (!vod) {
+      console.warn('[twitchData] ❌ No se encontró ningún VOD');
+      return null;
+    }
 
     if (!skipCache) {
       const lastId = await getLastVodId();
-      if (vod.id === lastId) return null;
+      console.log('[twitchData] lastVodId cacheado:', lastId);
+      if (vod.id === lastId) {
+        console.log('[twitchData] ⚠️ VOD ya fue publicado, ignorando');
+        return null;
+      }
       await setLastVodId(vod.id);
     }
 
@@ -112,6 +131,8 @@ export async function getTwitchData({ skipCache = false } = {}) {
 }
 
 export function buildTwitchEmbed(username, title, url, thumbnail, gameName, viewers, publishedAt) {
+  console.log('[twitchEmbed] Datos recibidos:', { username, title, url, thumbnail, gameName, viewers, publishedAt });
+
   const embed = new EmbedBuilder()
     .setTitle(title ?? 'Sin título')
     .setURL(url ?? `https://twitch.tv/${TWITCH_USERNAME}`)
