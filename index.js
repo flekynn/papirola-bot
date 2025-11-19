@@ -1,6 +1,7 @@
 import { Client, GatewayIntentBits, Collection } from 'discord.js';
 import dotenv from 'dotenv';
 import fs from 'fs';
+import express from 'express';   // 👈 Import correcto en ESM
 
 dotenv.config();
 
@@ -55,7 +56,6 @@ client.login(process.env.DISCORD_TOKEN);
 
 // 🚀 Simular puerto para Railway
 if (process.env.PORT) {
-  const express = require('express');
   const app = express();
   app.get('/', (_, res) => res.send('Bot activo'));
   app.listen(process.env.PORT, () => {

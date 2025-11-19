@@ -1,4 +1,5 @@
 ﻿[deploy]
+
 [processes.web]
-command = "node /index.js"
+command = "node index.js"
 healthcheckPath = ""
