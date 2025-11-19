@@ -25,7 +25,6 @@ client.once('clientReady', async () => {
     console.error('[startup:error]', err);
   }
 
-  // Twitch poll
   setInterval(async () => {
     const twitchEmbed = await getTwitchEmbed();
     if (twitchEmbed) {
@@ -34,7 +33,6 @@ client.once('clientReady', async () => {
     }
   }, Number(TWITCH_INTERVAL_MS));
 
-  // Kick poll
   setInterval(async () => {
     const kickEmbed = await getKickEmbed();
     if (kickEmbed) {
@@ -43,7 +41,6 @@ client.once('clientReady', async () => {
     }
   }, Number(KICK_INTERVAL_MS));
 
-  // YouTube poll
   setInterval(async () => {
     const youtubeEmbed = await getYoutubeEmbed();
     if (youtubeEmbed) {
@@ -56,7 +53,13 @@ client.once('clientReady', async () => {
 client.on('interactionCreate', async (interaction) => {
   if (!interaction.isChatInputCommand()) return;
 
-  // Comando /test_stream
+  // Evitar doble reconocimiento si otro handler ya respondió
+  if (interaction.deferred || interaction.replied) {
+    console.warn(`[skip] ${interaction.commandName} ya fue reconocido`);
+    return;
+  }
+
+  // /test_stream
   if (interaction.commandName === 'test_stream') {
     try {
       await interaction.deferReply();
@@ -81,7 +84,7 @@ client.on('interactionCreate', async (interaction) => {
     }
   }
 
-  // Comando /force_check
+  // /force_check
   if (interaction.commandName === 'force_check') {
     try {
       await interaction.deferReply();
