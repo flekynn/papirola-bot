@@ -10,42 +10,12 @@ let youtubeLive = false;
 
 export async function checkAllPlatforms({ skipCache = false } = {}) {
   const twitchData = await getTwitchData({ skipCache });
-  const kickData = await getKickData({ skipCache });
-  const youtubeData = await getYoutubeData({ skipCache });
+  const kickData   = await getKickData({ skipCache });
+  const youtubeData= await getYoutubeData({ skipCache });
 
-  const twitchEmbed = twitchData ? buildTwitchEmbed(
-    twitchData.username,
-    twitchData.title,
-    twitchData.url,
-    twitchData.thumbnail,
-    twitchData.gameName,
-    twitchData.viewers,
-    twitchData.publishedAt,
-    twitchData.duration,
-    twitchData.enVivo
-  ) : null;
-
-  const kickEmbed = kickData ? buildKickEmbed(
-    kickData.username,
-    kickData.title,
-    kickData.url,
-    kickData.thumbnail,
-    kickData.category,
-    kickData.viewers,
-    kickData.publishedAt,
-    kickData.duration,
-    kickData.enVivo
-  ) : null;
-
-  const youtubeEmbed = youtubeData ? buildYoutubeEmbed(
-    youtubeData.username,
-    youtubeData.title,
-    youtubeData.url,
-    youtubeData.thumbnail,
-    youtubeData.publishedAt,
-    youtubeData.duration,
-    youtubeData.enVivo
-  ) : null;
+  const twitchEmbed  = twitchData  ? buildTwitchEmbed(twitchData)   : null;
+  const kickEmbed    = kickData    ? buildKickEmbed(kickData)       : null;
+  const youtubeEmbed = youtubeData ? buildYoutubeEmbed(youtubeData) : null;
 
   return { twitchEmbed, kickEmbed, youtubeEmbed, twitchData, kickData, youtubeData };
 }

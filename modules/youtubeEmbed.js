@@ -7,6 +7,7 @@ const CACHE_FILE = './youtubeCache.json';
 let lastVideoId = null;
 let quotaBlocked = false;
 
+/** Cache del último video */
 async function getLastVideoId() {
   try {
     const raw = await fs.readFile(CACHE_FILE, 'utf8');
@@ -16,11 +17,11 @@ async function getLastVideoId() {
     return null;
   }
 }
-
 async function setLastVideoId(id) {
   await fs.writeFile(CACHE_FILE, JSON.stringify({ lastVideoId: id }));
 }
 
+/** Obtener datos del último video de YouTube */
 export async function getYoutubeData({ skipCache = false } = {}) {
   if (quotaBlocked) return null;
 
@@ -52,7 +53,6 @@ export async function getYoutubeData({ skipCache = false } = {}) {
     lastVideoId = videoId;
 
     return {
-      enVivo: false,
       username: video.snippet?.channelTitle ?? 'Canal desconocido',
       title: video.snippet?.title ?? 'Sin título',
       url: `https://www.youtube.com/watch?v=${videoId}`,
@@ -66,26 +66,32 @@ export async function getYoutubeData({ skipCache = false } = {}) {
   }
 }
 
-export function buildYoutubeEmbed(username, title, url, thumbnail, publishedAt, duration, enVivo) {
-  console.log('[youtubeEmbed] Datos recibidos:', { username, title, url, thumbnail, publishedAt, duration, enVivo });
+/** Formatear fecha */
+function formatDate(isoString) {
+  if (!isoString) return '';
+  const date = new Date(isoString);
+  return date.toLocaleString('es-AR', {
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit', hour12: false
+  });
+}
+
+/** Construir embed */
+export function buildYoutubeEmbed({ username, title, url, thumbnail, publishedAt }) {
+  console.log('[youtubeEmbed] Datos recibidos:', { username, title, url, thumbnail, publishedAt });
 
   const embed = new EmbedBuilder()
-    .setTitle('📺 Nuevo video en YouTube')
-    .setURL(url ?? 'https://www.youtube.com')
-    .setImage(thumbnail ?? 'https://www.youtube.com/img/branding/youtube-logo.png')
     .setColor('#FF0000')
-    .setAuthor({ name: username ?? 'YouTube' });
+    .setAuthor({ name: username ?? 'YouTube', url: `https://www.youtube.com/channel/${YOUTUBE_CHANNEL_ID}` })
+    .setTitle(`📺 ${title}`);
 
-  embed.setDescription(`**${title}**`);
+  embed.setDescription([
+    publishedAt ? `📅 Publicado: ${formatDate(publishedAt)}` : null,
+    `🔗 Ver el video: ${url}`
+  ].filter(Boolean).join('\n'));
 
-  const fields = [];
-
-  if (publishedAt) fields.push({ name: 'Publicado', value: new Date(publishedAt).toLocaleString(), inline: true });
-  if (duration) fields.push({ name: 'Duración', value: duration, inline: true });
-
-  if (fields.length > 0) embed.addFields(...fields);
-
-  embed.setFooter({ text: 'Ver el video' });
+  if (thumbnail) embed.setImage(thumbnail);
+  embed.setFooter({ text: 'Nuevo video en YouTube' });
 
   return embed;
 }
