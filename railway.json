@@ -1,4 +1,1 @@
-﻿{
-  "startCommand": "node index.js",
-  "healthCheckPath": null
-}
+﻿{ "startCommand": "node index.js", "healthCheckPath": null }
